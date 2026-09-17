@@ -271,10 +271,13 @@ function renderChapterEditor() {
     pWrap.appendChild(pL); pWrap.appendChild(pIn);
 
     var idWrap = el('div');
-    var idL = el('label', '', 'ID (url anchor)');
+    var idL = el('label', '', 'ID (url anchor, auto-slugs on save)');
     var idIn = el('input', '');
     idIn.type = 'text'; idIn.value = ch.id;
-    bindInput(idIn, function () { ch.id = slug(idIn.value || ch.title) || ch.id; idIn.value = ch.id; });
+    idIn.addEventListener('change', function () {
+        ch.id = slug(idIn.value) || ch.id;
+        idIn.value = ch.id;
+    });
     idWrap.appendChild(idL); idWrap.appendChild(idIn);
     row2.appendChild(pWrap); row2.appendChild(idWrap);
     card.appendChild(row2);
@@ -315,7 +318,9 @@ function renderBlocksEditor(blocks, holder) {
     aRow.appendChild(sel);
     aRow.appendChild(addBtn);
     var hint = el('div', 'inline-note',
-        'Tip: inside Paragraphs/Headings/Notes you can use &lt;strong&gt; and &lt;code&gt;. Rows in Tables: comma-separated cells, one row per line.');
+        'Click Edit (or preview text) to open a block, then change text character-by-character. ' +
+        '&lt;strong&gt; and &lt;code&gt; are allowed inside Paragraphs/Headings/Notes. ' +
+        'Table rows: comma-separated cells, one row per line.');
     adder.appendChild(aRow);
     adder.appendChild(hint);
     holder.appendChild(adder);
@@ -329,28 +334,38 @@ function renderBlockRow(blocks, b, i) {
     var row = el('div', 'brow');
 
     var head = el('div', 'brow-head');
-    head.appendChild(el('span', 'badge', esc(b.type)));
-    head.appendChild(el('span', 'brow-preview', esc(preview(b))));
+    var badge = el('span', 'badge', esc(b.type));
+    var previewEl = el('span', 'brow-preview', esc(preview(b)));
 
-    var up = el('button', '', '&uarr;'); up.title = 'Move up'; up.disabled = i === 0;
-    var down = el('button', '', '&darr;'); down.title = 'Move down'; down.disabled = i === blocks.length - 1;
-    var tog = el('button', '', isOpen ? '&minus;' : '&plus;'); tog.title = isOpen ? 'Collapse' : 'Edit';
-    var del = el('button', 'danger', '&times;'); del.title = 'Delete block';
-
-    up.onclick = function () { swap(blocks, i, i - 1); };
-    down.onclick = function () { swap(blocks, i, i + 1); };
-    del.onclick = function () {
-        blocks.splice(i, 1);
-        delete state.openUids[uid];
-        renderChapterEditor();
-    };
-    tog.onclick = function () {
+    var toggle = function () {
         if (state.openUids[uid]) delete state.openUids[uid];
         else state.openUids[uid] = true;
         renderChapterEditor();
     };
+    [badge, previewEl].forEach(function (n) {
+        n.style.cursor = 'pointer';
+        n.title = isOpen ? 'Collapse editor' : 'Open editor';
+        n.onclick = toggle;
+    });
+    head.appendChild(badge);
+    head.appendChild(previewEl);
 
-    head.appendChild(up); head.appendChild(down); head.appendChild(tog); head.appendChild(del);
+    var up = el('button', '', '&uarr;'); up.title = 'Move up'; up.disabled = i === 0;
+    var down = el('button', '', '&darr;'); down.title = 'Move down'; down.disabled = i === blocks.length - 1;
+    var edit = el('button', isOpen ? 'primary' : '', isOpen ? 'Done' : 'Edit'); edit.title = isOpen ? 'Collapse editor' : 'Edit this block';
+    var del = el('button', 'danger', '&times;'); del.title = 'Delete block';
+
+    up.onclick = function (e) { e.stopPropagation(); swap(blocks, i, i - 1); };
+    down.onclick = function (e) { e.stopPropagation(); swap(blocks, i, i + 1); };
+    edit.onclick = function (e) { e.stopPropagation(); toggle(); };
+    del.onclick = function (e) {
+        e.stopPropagation();
+        blocks.splice(i, 1);
+        delete state.openUids[uid];
+        renderChapterEditor();
+    };
+
+    head.appendChild(up); head.appendChild(down); head.appendChild(edit); head.appendChild(del);
     row.appendChild(head);
 
     if (isOpen) {
@@ -371,6 +386,7 @@ function labeledText(label, value) {
     wrap.appendChild(el('label', '', label));
     var ta = el('textarea', '');
     ta.value = value;
+    wrap.appendChild(ta);
     return { wrap: wrap, ta: ta };
 }
 
