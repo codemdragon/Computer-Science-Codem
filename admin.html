@@ -47,7 +47,7 @@
         }
 
         .logo-area { display: flex; align-items: center; gap: 12px; }
-        .logo-svg { height: 28px; width: 28px; fill: var(--accent-blue-bright); }
+        .logo-svg { height: 28px; width: 28px; object-fit: contain; display: block; }
         .site-title { font-weight: 700; font-size: 1.1rem; color: white; }
         .site-subtitle { font-size: 0.75rem; color: var(--accent-blue); }
         .head-actions { display: flex; align-items: center; gap: 10px; }
@@ -192,11 +192,7 @@
 
     <header>
         <div class="logo-area">
-            <svg class="logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20,20 L40,20 L40,80 L20,80 Z" fill="#111" stroke="#00ccff" stroke-width="2"/>
-                <path d="M60,20 L80,20 L80,80 L60,80 Z" fill="#111" stroke="#00ccff" stroke-width="2"/>
-                <path d="M45,40 L55,40 L55,60 L45,60 Z" fill="#00ccff"/>
-            </svg>
+            <img class="logo-svg" src="Logo%20(2).png" alt="A2CS logo">
             <div>
                 <span class="site-title">A2CS</span>
                 <span class="site-subtitle">Admin Panel</span>
