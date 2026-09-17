@@ -24,6 +24,12 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            tap-highlight-color: transparent;
+        }
+
+        html {
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -35,6 +41,47 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+        }
+
+        button,
+        .nav-item,
+        .mobile-menu-btn,
+        .chip,
+        summary,
+        .chapter-item,
+        .brow-head,
+        .add-chap-btn,
+        a {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        @keyframes tap-feedback {
+            0% {
+                transform: scale(1);
+                filter: brightness(1);
+                box-shadow: 0 0 0 rgba(0, 136, 255, 0);
+            }
+            50% {
+                transform: scale(0.98);
+                filter: brightness(1.12);
+                box-shadow: 0 0 0 4px rgba(0, 136, 255, 0.08);
+            }
+            100% {
+                transform: scale(1);
+                filter: brightness(1);
+                box-shadow: 0 0 0 rgba(0, 136, 255, 0);
+            }
+        }
+
+        button:active,
+        .nav-item:active,
+        .mobile-menu-btn:active,
+        .chip:active,
+        summary:active,
+        .chapter-item:active,
+        .brow-head:active {
+            animation: tap-feedback 0.18s ease-out;
         }
 
         /* --- HEADER --- */
