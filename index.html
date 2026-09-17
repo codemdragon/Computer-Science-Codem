@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A2CS Revision | 9709 Cambridge</title>
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --bg-dark: #050505;
+            --bg-panel: #111111;
+            --bg-card: #161616;
+            --bg-card-hover: #1a1a1a;
+            --accent-blue: #0066cc;
+            --accent-blue-bright: #0080ff;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: #333;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --code-font: 'Consolas', 'Monaco', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- HEADER --- */
+        header {
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--accent-blue);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-svg {
+            height: 32px;
+            width: 32px;
+            fill: var(--accent-blue-bright);
+        }
+
+        .site-title {
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
+            color: white;
+        }
+
+        .site-subtitle {
+            font-size: 0.8rem;
+            color: var(--accent-blue);
+            display: none;
+        }
+
+        @media(min-width: 600px) {
+            .site-subtitle { display: inline-block; }
+        }
+
+        /* --- LAYOUT CONTAINER --- */
+        .app-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR NAVIGATION --- */
+        nav {
+            width: 250px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-label {
+            padding: 1rem 1.5rem 0.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .nav-item {
+            padding: 12px 1.5rem;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .nav-item:hover {
+            background-color: var(--bg-card);
+            color: white;
+        }
+
+        .nav-item.active {
+            background-color: rgba(0, 102, 204, 0.1);
+            border-left-color: var(--accent-blue-bright);
+            color: white;
+            font-weight: 500;
+        }
+
+        nav a.nav-item {
+            text-decoration: none;
+            display: block;
+        }
+
+        /* --- MAIN CONTENT AREA --- */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            position: relative;
+            scroll-behavior: smooth;
+        }
+
+        section {
+            display: none;
+            max-width: 900px;
+            margin: 0 auto;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            color: white;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h2 {
+            font-size: 1.3rem;
+            color: var(--accent-blue-bright);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            color: white;
+            margin-top: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-main);
+        }
+
+        ul, ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        li {
+            margin-bottom: 0.4rem;
+        }
+
+        strong {
+            color: white;
+        }
+
+        /* --- CARDS & BOXES --- */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 1.25rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            border-left: 2px solid var(--accent-blue);
+        }
+
+        .card:hover {
+            border-color: var(--accent-blue);
+            background-color: var(--bg-card-hover);
+        }
+
+        .card > h3:first-child {
+            color: var(--accent-blue-bright);
+            margin-top: 0;
+        }
+
+        /* --- NOTES / CALLOUTS --- */
+        .note {
+            background-color: rgba(0, 102, 204, 0.08);
+            border-left: 3px solid var(--accent-blue-bright);
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            margin: 0.75rem 0;
+            font-size: 0.95rem;
+        }
+
+        .note::before {
+            content: 'NOTE ';
+            font-weight: bold;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            color: var(--accent-blue-bright);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* --- TABLES --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: rgba(0, 102, 204, 0.2);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        table.bits th {
+            text-align: center;
+            background-color: rgba(0, 102, 204, 0.25);
+            font-family: var(--code-font);
+            padding: 6px 10px;
+            white-space: nowrap;
+        }
+
+        /* --- CODE BLOCKS --- */
+        code {
+            font-family: var(--code-font);
+            background-color: #000;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: var(--accent-blue-bright);
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: #000;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: var(--text-main);
+            display: block;
+            line-height: 1.5;
+        }
+
+        /* --- ACCORDION (DETAILS/SUMMARY) --- */
+        details {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+
+        summary {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-main);
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary::after {
+            content: '+';
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        details[open] summary::after {
+            content: '-';
+        }
+
+        details[open] summary {
+            border-bottom: 1px solid var(--border-color);
+            color: white;
+        }
+
+        .details-content {
+            padding: 1rem;
+        }
+
+        /* --- PDF DOWNLOAD CHIP --- */
+        .chapter-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 1.25rem;
+        }
+
+        .chapter-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 16px;
+            background-color: rgba(0, 102, 204, 0.15);
+            border: 1px solid var(--accent-blue);
+            border-radius: 20px;
+            color: var(--accent-blue-bright);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .chip:hover {
+            background-color: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue-bright);
+        }
+
+        .chip svg {
+            width: 15px;
+            height: 15px;
+            fill: currentColor;
+        }
+
+        /* --- STATUS / ERROR --- */
+        .status-box {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent-blue-bright);
+            padding: 1.5rem;
+            border-radius: 4px;
+            max-width: 900px;
+            margin: 2rem auto;
+        }
+
+        .status-box.warn {
+            border-left-color: #d4760a;
+        }
+
+        /* --- MOBILE NAV TOGGLE --- */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            nav {
+                position: absolute;
+                top: 60px;
+                left: 0;
+                height: calc(100% - 60px);
+                z-index: 20;
+                transform: translateX(-100%);
+                box-shadow: 4px 0 10px rgba(0,0,0,0.5);
+            }
+
+            nav.open {
+                transform: translateX(0);
+            }
+
+            main {
+                padding: 1rem;
+            }
+
+            .table-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .table-row table {
+                width: 100%;
+            }
+        }
+
+        /* --- TABLE PAIR (side-by-side) --- */
+        .table-row {
+            display: flex;
+            gap: 35px;
+            width: 100%;
+            align-items: flex-start;
+            margin: 15px 0;
+        }
+
+        @media (max-width: 768px) {
+            .table-row { gap: 15px; }
+        }
+
+        .table-row table {
+            width: 50%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .table-row table { width: 100%; }
+        }
+
+        .table-row th,
+        .table-row td {
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            text-align: center;
+        }
+
+        .table-row th {
+            font-weight: bold;
+            color: var(--accent-blue-bright);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo-area">
+            <svg class="logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20,20 L40,20 L40,80 L20,80 Z" fill="#111" stroke="#00ccff" stroke-width="2"/>
+                <path d="M60,20 L80,20 L80,80 L60,80 Z" fill="#111" stroke="#00ccff" stroke-width="2"/>
+                <path d="M45,40 L55,40 L55,60 L45,60 Z" fill="#00ccff"/>
+            </svg>
+            <div>
+                <span class="site-title">A2CS</span>
+                <span class="site-subtitle">Exam Prep</span>
+            </div>
+        </div>
+        <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    </header>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation (generated from db.json) -->
+        <nav id="sidebar">
+            <div class="nav-label">Chapters</div>
+            <div id="nav-chapters"></div>
+            <div class="nav-label" style="margin-top: 2rem;">Settings</div>
+            <a class="nav-item" href="admin.html">Admin Panel</a>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="main">
+            <div class="status-box" id="loading-box">
+                <strong>Loading notes&hellip;</strong>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        const ESCAPE_ALLOWED = { strong: true, code: true, em: true };
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        // Allows a small set of safe inline markup in block text
+        function safeHtml(str) {
+            return escapeHtml(str).replace(/&lt;(\/?(?:strong|code|em))&gt;/g, '<$1>');
+        }
+
+        // --- Block renderers ---
+        function renderBlocks(blocks, container) {
+            blocks.forEach(function (b) {
+                var el = renderBlock(b);
+                if (el) container.appendChild(el);
+            });
+        }
+
+        function renderBlock(b) {
+            var el;
+            switch (b.type) {
+                case 'p':
+                    el = document.createElement('p');
+                    el.innerHTML = safeHtml(b.text || '');
+                    return el;
+
+                case 'h2':
+                    el = document.createElement('h2');
+                    el.innerHTML = safeHtml(b.text || '');
+                    return el;
+
+                case 'h3':
+                    el = document.createElement('h3');
+                    el.innerHTML = safeHtml(b.text || '');
+                    return el;
+
+                case 'list':
+                    el = document.createElement(b.style === 'ol' ? 'ol' : 'ul');
+                    (b.items || []).forEach(function (item) {
+                        var li = document.createElement('li');
+                        li.innerHTML = safeHtml(item);
+                        el.appendChild(li);
+                    });
+                    return el;
+
+                case 'note': {
+                    var d = document.createElement('div');
+                    d.className = 'note';
+                    d.innerHTML = safeHtml(b.text || '');
+                    return d;
+                }
+
+                case 'card': {
+                    var card = document.createElement('div');
+                    card.className = 'card';
+                    if (b.title) {
+                        var h = document.createElement('h3');
+                        h.innerHTML = safeHtml(b.title);
+                        card.appendChild(h);
+                    }
+                    renderBlocks(b.blocks || [], card);
+                    return card;
+                }
+
+                case 'code': {
+                    var pre = document.createElement('pre');
+                    var code = document.createElement('code');
+                    code.textContent = b.text || '';
+                    pre.appendChild(code);
+                    return pre;
+                }
+
+                case 'table': {
+                    var t = document.createElement('table');
+                    var head = document.createElement('thead');
+                    var hr = document.createElement('tr');
+                    (b.headers || []).forEach(function (h) {
+                        var th = document.createElement('th');
+                        th.textContent = h;
+                        hr.appendChild(th);
+                    });
+                    head.appendChild(hr);
+                    t.appendChild(head);
+                    var body = document.createElement('tbody');
+                    (b.rows || []).forEach(function (row) {
+                        var tr = document.createElement('tr');
+                        row.forEach(function (c) {
+                            var td = document.createElement('td');
+                            td.textContent = c;
+                            tr.appendChild(td);
+                        });
+                        body.appendChild(tr);
+                    });
+                    t.appendChild(body);
+                    return t;
+                }
+
+                case 'bits': {
+                    var bt = document.createElement('table');
+                    bt.className = 'bits';
+                    var tr = document.createElement('tr');
+                    (b.cells || []).forEach(function (c) {
+                        var th = document.createElement('th');
+                        th.textContent = c;
+                        tr.appendChild(th);
+                    });
+                    bt.appendChild(tr);
+                    return bt;
+                }
+
+                case 'tablePair': {
+                    var row = document.createElement('div');
+                    row.className = 'table-row';
+                    ['left', 'right'].forEach(function (side) {
+                        var p = b[side];
+                        if (!p) return;
+                        var t = document.createElement('table');
+                        var tr = document.createElement('tr');
+                        var th = document.createElement('th');
+                        th.textContent = p.header || '';
+                        tr.appendChild(th);
+                        t.appendChild(tr);
+                        (p.cells || []).forEach(function (c) {
+                            var tr2 = document.createElement('tr');
+                            var td = document.createElement('td');
+                            td.textContent = c;
+                            tr2.appendChild(td);
+                            t.appendChild(tr2);
+                        });
+                        row.appendChild(t);
+                    });
+                    return row;
+                }
+
+                case 'details': {
+                    var det = document.createElement('details');
+                    var sum = document.createElement('summary');
+                    sum.innerHTML = safeHtml(b.summary || 'Details');
+                    det.appendChild(sum);
+                    var dc = document.createElement('div');
+                    dc.className = 'details-content';
+                    renderBlocks(b.blocks || [], dc);
+                    det.appendChild(dc);
+                    return det;
+                }
+
+                default:
+                    return null;
+            }
+        }
+
+        // --- App render ---
+        function buildApp(data) {
+            var navChapters = document.getElementById('nav-chapters');
+            var main = document.getElementById('main');
+            navChapters.innerHTML = '';
+            main.innerHTML = '';
+
+            var first = true;
+            data.chapters.forEach(function (ch, i) {
+                var navItem = document.createElement('div');
+                navItem.className = 'nav-item' + (first ? ' active' : '');
+                navItem.setAttribute('data-target', ch.id);
+                navItem.textContent = (i + 1) + '. ' + ch.title;
+                navItem.onclick = function () {
+                    showSection(ch.id);
+                };
+                navChapters.appendChild(navItem);
+
+                var sec = document.createElement('section');
+                sec.id = ch.id;
+                if (first) sec.className = 'active';
+
+                var h1 = document.createElement('h1');
+                h1.textContent = (i + 1) + '. ' + ch.title;
+                sec.appendChild(h1);
+
+                var meta = document.createElement('div');
+                meta.className = 'chapter-meta';
+                if (ch.subtitle) {
+                    var sub = document.createElement('p');
+                    sub.className = 'chapter-subtitle';
+                    sub.textContent = ch.subtitle;
+                    meta.appendChild(sub);
+                }
+                if (ch.pdf) {
+                    var a = document.createElement('a');
+                    a.className = 'chip';
+                    a.href = ch.pdf;
+                    a.download = '';
+                    a.title = 'Download ' + ch.title + ' notes (PDF)';
+                    a.innerHTML = '<svg viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v6.59l2.29-2.3a1 1 0 0 1 1.42 1.42l-4 4a1 1 0 0 1-1.42 0l-4-4A1 1 0 0 1 4.71 6.3L7 8.59V2a1 1 0 0 1 1-1zM2 14a1 1 0 0 1 1-1h10a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1z"/></svg>Download PDF Notes';
+                    meta.appendChild(a);
+                }
+                sec.appendChild(meta);
+
+                renderBlocks(ch.blocks || [], sec);
+                main.appendChild(sec);
+
+                first = false;
+            });
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('section').forEach(function (s) {
+                s.classList.toggle('active', s.id === sectionId);
+            });
+            document.querySelectorAll('#nav-chapters .nav-item').forEach(function (n) {
+                n.classList.toggle('active', n.getAttribute('data-target') === sectionId);
+            });
+            closeMenu();
+        }
+
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function closeMenu() {
+            var nav = document.getElementById('sidebar');
+            if (nav.classList.contains('open')) nav.classList.remove('open');
+        }
+
+        // --- Load data ---
+        fetch('db.json', { cache: 'no-store' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                if (!data || !Array.isArray(data.chapters) || data.chapters.length === 0) {
+                    throw new Error('No chapters found in db.json');
+                }
+                buildApp(data);
+            })
+            .catch(function (err) {
+                document.getElementById('loading-box').outerHTML =
+                    '<div class="status-box warn">' +
+                        '<h2 style="margin-top:0;color:#d4760a;">Could not load notes</h2>' +
+                        '<p>Unable to read <code>db.json</code> (' + escapeHtml(err.message) + ').</p>' +
+                        '<p>This page must be hosted over HTTP(S) alongside <code>db.json</code> ' +
+                        '(for example on Vercel, GitHub Pages, or a local server like <code>npx serve</code>).</p>' +
+                    '</div>';
+            });
+    </script>
+</body>
+</html>
