@@ -59,7 +59,8 @@
         .logo-svg {
             height: 32px;
             width: 32px;
-            fill: var(--accent-blue-bright);
+            object-fit: contain;
+            display: block;
         }
 
         .site-title {
@@ -482,11 +483,7 @@
     <!-- Header -->
     <header>
         <div class="logo-area">
-            <svg class="logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20,20 L40,20 L40,80 L20,80 Z" fill="#111" stroke="#00ccff" stroke-width="2"/>
-                <path d="M60,20 L80,20 L80,80 L60,80 Z" fill="#111" stroke="#00ccff" stroke-width="2"/>
-                <path d="M45,40 L55,40 L55,60 L45,60 Z" fill="#00ccff"/>
-            </svg>
+            <img class="logo-svg" src="Logo%20(2).png" alt="A2CS logo">
             <div>
                 <span class="site-title">A2CS</span>
                 <span class="site-subtitle">Exam Prep</span>
@@ -709,7 +706,7 @@
                     a.href = ch.pdf;
                     a.download = '';
                     a.title = 'Download ' + ch.title + ' notes (PDF)';
-                    a.innerHTML = '<svg viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v6.59l2.29-2.3a1 1 0 0 1 1.42 1.42l-4 4a1 1 0 0 1-1.42 0l-4-4A1 1 0 0 1 4.71 6.3L7 8.59V2a1 1 0 0 1 1-1zM2 14a1 1 0 0 1 1-1h10a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1z"/></svg>Download PDF Notes';
+                    a.innerHTML = '<svg viewBox="0 0 16 16"><path d="M8 1a1 1 0 0 1 1 1v6.59l2.29-2.3a1 1 0 0 1 1.42 1.42l-4 4a1 1 0 0 1-1.42 0l-4-4A1 1 0 0 1 4.71 6.3L7 8.59V2a1 1 0 0 1 1-1zM2 1[...]"></path></svg> PDF';
                     meta.appendChild(a);
                 }
                 sec.appendChild(meta);
