@@ -139,7 +139,8 @@
             display: flex;
             flex: 1;
             min-height: 0;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: hidden;
         }
 
         /* --- SIDEBAR NAVIGATION --- */
@@ -195,11 +196,26 @@
             flex: 1;
             min-height: 0;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 2rem;
             padding-bottom: calc(2rem + env(safe-area-inset-bottom));
             position: relative;
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
+        }
+
+        /* Wide tables (e.g. mantissa/exponent bit tables) get their own
+           horizontal scrollbar instead of pushing the whole page sideways. */
+        .table-scroll {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 1rem 0;
+        }
+
+        .table-scroll table {
+            margin: 0;
         }
 
         section {
@@ -508,6 +524,9 @@
             display: flex;
             gap: 35px;
             width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             align-items: flex-start;
             margin: 15px 0;
         }
@@ -670,7 +689,10 @@
                         body.appendChild(tr);
                     });
                     t.appendChild(body);
-                    return t;
+                    var wrap = document.createElement('div');
+                    wrap.className = 'table-scroll';
+                    wrap.appendChild(t);
+                    return wrap;
                 }
 
                 case 'bits': {
@@ -683,7 +705,10 @@
                         tr.appendChild(th);
                     });
                     bt.appendChild(tr);
-                    return bt;
+                    var bwrap = document.createElement('div');
+                    bwrap.className = 'table-scroll';
+                    bwrap.appendChild(bt);
+                    return bwrap;
                 }
 
                 case 'tablePair': {
