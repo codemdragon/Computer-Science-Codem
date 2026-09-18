@@ -801,7 +801,7 @@
             },
             {
               "type": "code",
-              "text": "TYPE Day\n    DECLARE Today : (Mon,Tue,Wed,Thu,Fri,Sat,Sun)\nENDTYPE\n\nDECLARE MyDay : Day\nMyDay.Today <-- Tue"
+              "text": "TYPE Day = (Mon,Tue,Wed,Thu,Fri,Sat,Sun)\n\nDECLARE MyDay : Day\nMyDay <-- Tue"
             },
             {
               "type": "note",
