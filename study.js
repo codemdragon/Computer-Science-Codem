@@ -8,6 +8,26 @@ window.Study = (function () {
     var db = null;
     var chapters = [];
 
+    // ---------- Icons (inline SVG — no emoji anywhere in the games) ----------
+    // All icons are 24x24, inherit the surrounding text colour and size (1em).
+    var ICONS = {
+        check: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+        cross: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+        arrowLeft: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>',
+        arrowRight: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>',
+        pencil: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4z"></path><line x1="14.5" y1="5.5" x2="17.5" y2="8.5"></line></svg>',
+        bolt: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+        clock: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14.5"></polyline></svg>',
+        bulb: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.9V16h5v-.2c0-.8.4-1.5 1-1.9A6 6 0 0 0 12 3z"></path><line x1="9.5" y1="19" x2="14.5" y2="19"></line><line x1="10.5" y1="21.5" x2="13.5" y2="21.5"></line></svg>',
+        trophy: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 4h10v5a5 5 0 0 1-10 0z"></path><path d="M7 5H4.5v1.5A3.5 3.5 0 0 0 8 10"></path><path d="M17 5h2.5v1.5A3.5 3.5 0 0 1 16 10"></path><line x1="12" y1="14" x2="12" y2="18"></line><line x1="8" y1="21" x2="16" y2="21"></line><line x1="9.5" y1="18" x2="14.5" y2="18"></line></svg>',
+        thumbsUp: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.3a2 2 0 0 0 2-1.7l1.4-9a2 2 0 0 0-2-2.3z"></path><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>',
+        book: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>',
+        retry: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="2 4 2 10 8 10"></polyline><path d="M4.5 15a9 9 0 1 0 2.1-9.4L2 10"></path></svg>',
+        sparkle: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 3l1.7 4.6L17.3 9l-4.6 1.7L11 15.3 9.3 10.7 4.7 9l4.6-1.4z"></path><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"></path></svg>',
+        cards: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="6" width="15" height="15" rx="2"></rect><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3H19a3 3 0 0 1 3 3v10.5a1.5 1.5 0 0 1-1.5 1.5H17"></path></svg>',
+        clipboard: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5"></path><path d="M15 4.5h2.5A1.5 1.5 0 0 1 19 6v13.5A1.5 1.5 0 0 1 17.5 21h-11A1.5 1.5 0 0 1 5 19.5V6a1.5 1.5 0 0 1 1.5-1.5H9"></path><polyline points="9 13 11.2 15.2 15.5 10.5"></polyline></svg>'
+    };
+
     // ---------- Utilities ----------
     function esc(s) {
         return String(s)
@@ -64,6 +84,33 @@ window.Study = (function () {
         });
     }
 
+    // Card backs stay memorisable: one short answer line plus at most 3 bullets.
+    var MAX_POINTS = 3;
+
+    function cardPoints(card) {
+        var pts = Array.isArray(card.points) ? card.points.slice() : [];
+        if (!pts.length && card.details) {
+            // legacy field — split on line / bullet breaks so old cards still read as bullets
+            pts = String(card.details).split(/\s*(?:\n|\u2022)\s*/);
+        }
+        pts = pts.map(function (p) { return String(p).trim(); }).filter(Boolean);
+        return pts.slice(0, MAX_POINTS);
+    }
+
+    function cardBackHtml(card) {
+        var back = '<div class="fc-def">' + safeHtml(card.definition || '') + '</div>';
+        var pts = cardPoints(card);
+        if (pts.length) {
+            back += '<ul class="fc-points">' + pts.map(function (p) {
+                return '<li>' + safeHtml(p) + '</li>';
+            }).join('') + '</ul>';
+        }
+        if (card.example) {
+            back += '<div class="fc-example"><span class="fc-label">Example</span>' + safeHtml(card.example) + '</div>';
+        }
+        return back;
+    }
+
     // Build the deck for the current filter + mode
     function fcBuildDeck() {
         var list = fcFilterCards();
@@ -77,21 +124,14 @@ window.Study = (function () {
                         key: c.id + '::' + i,
                         front: safeHtml(qa.q),
                         back: '<div class="fc-def">' + safeHtml(qa.a) + '</div>' +
-                              '<div class="fc-extra"><span class="fc-label">From</span>' + safeHtml(c.term) + '</div>',
+                              '<div class="fc-from"><span class="fc-label">From</span>' + safeHtml(c.term) + '</div>',
                         chapter: c.chapter
                     });
                 });
             });
         } else {
             list.forEach(function (c) {
-                var back = '<div class="fc-def">' + safeHtml(c.definition || '') + '</div>';
-                if (c.details) {
-                    back += '<div class="fc-extra"><span class="fc-label">Details</span>' + safeHtml(c.details) + '</div>';
-                }
-                if (c.example) {
-                    back += '<div class="fc-extra"><span class="fc-label">Example</span>' + safeHtml(c.example) + '</div>';
-                }
-                deck.push({ key: c.id, front: safeHtml(c.term), back: back, chapter: c.chapter });
+                deck.push({ key: c.id, front: safeHtml(c.term), back: cardBackHtml(c), chapter: c.chapter });
             });
         }
 
@@ -244,9 +284,9 @@ window.Study = (function () {
 
         var knownCount = Object.keys(fc.known).length;
         progress.style.width = (knownCount / fc.deck.length * 100) + '%';
-        stats.textContent = 'Known: ' + knownCount + '/' + fc.deck.length +
-                            ' | To Review: ' + fc.unknown.length +
-                            (fc.completed ? ' — session complete! 🎉' : '');
+        stats.innerHTML = 'Known: ' + knownCount + '/' + fc.deck.length +
+                            ' &middot; To Review: ' + fc.unknown.length +
+                            (fc.completed ? '<span class="fc-done">' + ICONS.sparkle + ' Session complete</span>' : '');
     }
 
     function fcSetFilter(id) {
@@ -319,12 +359,12 @@ window.Study = (function () {
         controls.id = 'fc-controls';
         controls.innerHTML =
             '<div class="knowledge-buttons">' +
-                '<button type="button" class="btn-know" id="fc-know">✓ I know this</button>' +
-                '<button type="button" class="btn-dont" id="fc-dont">✗ I don\u2019t know</button>' +
+                '<button type="button" class="btn-know" id="fc-know">' + ICONS.check + ' I know this</button>' +
+                '<button type="button" class="btn-dont" id="fc-dont">' + ICONS.cross + ' I don\u2019t know</button>' +
             '</div>' +
             '<div class="study-nav">' +
-                '<button type="button" class="study-btn" id="fc-prev">← Previous</button>' +
-                '<button type="button" class="study-btn" id="fc-next">Next →</button>' +
+                '<button type="button" class="study-btn" id="fc-prev">' + ICONS.arrowLeft + ' Previous</button>' +
+                '<button type="button" class="study-btn" id="fc-next">Next ' + ICONS.arrowRight + '</button>' +
             '</div>' +
             '<div class="session-stats" id="fc-stats"></div>';
         sec.appendChild(controls);
@@ -422,8 +462,8 @@ window.Study = (function () {
         root.innerHTML =
             '<div class="quiz-setup">' +
                 '<div class="mode-toggle" id="qz-mode">' +
-                    '<button type="button" data-mode="practice"' + (qz.mode === 'practice' ? ' class="active"' : '') + '>📝 Practice</button>' +
-                    '<button type="button" data-mode="speed"' + (qz.mode === 'speed' ? ' class="active"' : '') + '>⚡ Speed Round</button>' +
+                    '<button type="button" data-mode="practice"' + (qz.mode === 'practice' ? ' class="active"' : '') + '>' + ICONS.pencil + ' Practice</button>' +
+                    '<button type="button" data-mode="speed"' + (qz.mode === 'speed' ? ' class="active"' : '') + '>' + ICONS.bolt + ' Speed Round</button>' +
                 '</div>' +
                 '<p class="quiz-setup-hint">' +
                     (qz.mode === 'practice'
@@ -535,12 +575,12 @@ window.Study = (function () {
 
         root.innerHTML =
             '<div class="score-bar">' +
-                '<span class="score-badge green">✓ ' + r.score + '</span>' +
-                '<span class="score-badge red">✗ ' + (r.idx - r.score) + '</span>' +
+                '<span class="score-badge green">' + ICONS.check + ' ' + r.score + '</span>' +
+                '<span class="score-badge red">' + ICONS.cross + ' ' + (r.idx - r.score) + '</span>' +
                 '<span class="score-badge blue">' + (r.idx + 1) + '/' + r.questions.length + '</span>' +
-                '<span class="game-timer' + (r.mode === 'speed' && r.timeLeft <= 10 ? ' danger' : '') + '">⏱ <span id="qz-timer">' +
+                '<span class="game-timer' + (r.mode === 'speed' && r.timeLeft <= 10 ? ' danger' : '') + '">' + ICONS.clock + ' <span id="qz-timer">' +
                     (r.mode === 'speed' ? r.timeLeft : r.seconds) + 's</span></span>' +
-                '<button type="button" class="qz-quit" id="qz-quit" title="Quit this round">✕ Quit</button>' +
+                '<button type="button" class="qz-quit" id="qz-quit" title="Quit this round">' + ICONS.cross + ' Quit</button>' +
             '</div>' +
             '<div class="progress-track"><div class="progress-fill" style="width:' + (r.idx / r.questions.length * 100) + '%"></div></div>' +
             '<p class="quiz-question">' + (r.idx + 1) + '. ' + safeHtml(q.q) + '</p>' +
@@ -579,8 +619,8 @@ window.Study = (function () {
                 var fb = document.getElementById('qz-feedback');
                 if (fb) {
                     fb.innerHTML =
-                        '<div class="explanation">💡 ' + (q.exp ? safeHtml(q.exp) : 'Correct answer: ' + safeHtml(q.opts[q.ans])) + '</div>' +
-                        '<div class="quiz-actions"><button type="button" class="study-btn primary" id="qz-next">Next →</button></div>';
+                        '<div class="explanation">' + ICONS.bulb + ' ' + (q.exp ? safeHtml(q.exp) : 'Correct answer: ' + safeHtml(q.opts[q.ans])) + '</div>' +
+                        '<div class="quiz-actions"><button type="button" class="study-btn primary" id="qz-next">Next ' + ICONS.arrowRight + '</button></div>';
                     var nextBtn = document.getElementById('qz-next');
                     nextBtn.addEventListener('click', qzNext);
                 }
@@ -604,7 +644,7 @@ window.Study = (function () {
         var r = qz.run;
         var total = r.questions.length;
         var pct = total ? Math.round(r.score / total * 100) : 0;
-        var emoji = pct >= 80 ? '🔥' : (pct >= 50 ? '👍' : '💪');
+        var resultIcon = pct >= 80 ? ICONS.trophy : (pct >= 50 ? ICONS.thumbsUp : ICONS.book);
         var time = r.mode === 'speed' ? (60 - Math.max(r.timeLeft, 0)) + 's' : r.seconds + 's';
 
         var wrongList = '';
@@ -612,20 +652,20 @@ window.Study = (function () {
             wrongList = '<div class="qz-wrong"><div class="qz-wrong-title">Review these (' + r.wrong.length + '):</div>' +
                 r.wrong.map(function (q) {
                     return '<div class="qz-wrong-item"><strong>' + safeHtml(q.q) + '</strong><br>' +
-                        '✓ ' + safeHtml(q.opts[q.ans]) +
-                        (q.exp ? ' — <em>' + safeHtml(q.exp) + '</em>' : '') + '</div>';
+                        ICONS.check + ' ' + safeHtml(q.opts[q.ans]) +
+                        (q.exp ? ' &mdash; <em>' + safeHtml(q.exp) + '</em>' : '') + '</div>';
                 }).join('') + '</div>';
         }
 
         root.innerHTML =
             '<div class="quiz-setup qz-results">' +
-                '<div class="qz-emoji">' + emoji + '</div>' +
+                '<div class="qz-result-icon">' + resultIcon + '</div>' +
                 '<h3>' + r.score + '/' + total + ' correct (' + pct + '%)</h3>' +
-                '<p class="quiz-setup-hint">Time: ' + time +
-                    (r.mode === 'speed' ? ' · Speed Round' : '') + '</p>' +
+                '<p class="quiz-setup-hint">' + ICONS.clock + ' Time: ' + time +
+                    (r.mode === 'speed' ? ' &middot; Speed Round' : '') + '</p>' +
                 wrongList +
                 '<div class="quiz-actions">' +
-                    '<button type="button" class="study-btn primary" id="qz-retry">🔄 Retry</button>' +
+                    '<button type="button" class="study-btn primary" id="qz-retry">' + ICONS.retry + ' Retry</button>' +
                     '<button type="button" class="study-btn" id="qz-setup">Change settings</button>' +
                 '</div>' +
             '</div>';
@@ -675,5 +715,5 @@ window.Study = (function () {
         qzRenderSetup();
     }
 
-    return { init: init };
+    return { init: init, icons: ICONS };
 })();

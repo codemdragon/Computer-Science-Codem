@@ -520,6 +520,27 @@ function blockForm(b) {
 }
 
 // ---------- Study editors (Flashcards + Quiz) ----------
+// Flashcards have to stay memorisable: one short answer line plus a few bullets.
+// Anything longer belongs on another card (same rule Quizlet decks follow).
+var FC_DEF_MAX = 110;
+var FC_POINT_MAX = 70;
+var FC_POINTS_MAX = 3;
+var FC_ANSWER_MAX = 60;
+
+function flashcardWarnings(card) {
+    var w = [];
+    var def = card.definition || '';
+    if (def.length > FC_DEF_MAX) w.push('Definition is ' + def.length + ' characters — split it into two cards');
+    var pts = Array.isArray(card.points) ? card.points : [];
+    if (pts.length > FC_POINTS_MAX) w.push(pts.length + ' bullets — keep it to 3 or fewer');
+    if (pts.some(function (p) { return String(p).length > FC_POINT_MAX; })) w.push('A bullet is too long — shorten it');
+    if (card.details) w.push('Uses the old "details" field — move it into bullets');
+    (card.questions || []).forEach(function (qa, i) {
+        if ((qa.a || '').length > FC_ANSWER_MAX) w.push('Answer ' + (i + 1) + ' is long — trim it');
+    });
+    return w;
+}
+
 function chapterSelect(chapters, value, onChange) {
     var sel = el('select', '');
     var optAny = document.createElement('option');
@@ -586,8 +607,9 @@ function renderFlashcardsEditor() {
     wrap.appendChild(el('h2', '', 'Flashcards'));
     wrap.appendChild(el('div', 'inline-note',
         'These power the <strong>Flashcards</strong> page on the site (Terms mode = term &rarr; definition; ' +
-        'Questions mode = the Q/A pairs below). <strong>Definition</strong>, <strong>details</strong> and ' +
-        '<strong>example</strong> support &lt;strong&gt; / &lt;code&gt; / &lt;em&gt;.'));
+        'Questions mode = the Q/A pairs below). Cards must stay short: <strong>one answer line</strong> plus ' +
+        'at most <strong>3 bullets</strong> — split anything longer into a second card. ' +
+        'Definition, bullets and example support &lt;strong&gt; / &lt;code&gt; / &lt;em&gt;.'));
 
     var addBtn = el('button', 'primary', '+ New flashcard');
     addBtn.onclick = function () {
@@ -595,6 +617,7 @@ function renderFlashcardsEditor() {
             id: slug('fc-' + Date.now()),
             term: 'New term',
             definition: '',
+            points: [],
             chapter: state.db.chapters.length ? state.db.chapters[0].id : '',
             questions: []
         };
@@ -628,6 +651,7 @@ function renderFlashcardRow(cards, card, i) {
     var badge = el('span', 'badge', esc(card.chapter || '—'));
     var previewEl = el('span', 'brow-preview',
         esc(card.term || '(untitled)') + ' · ' +
+        ((card.points || []).length) + ' bullets · ' +
         ((card.questions || []).length) + ' q');
     var toggle = function () {
         if (state.openUids[uid]) delete state.openUids[uid];
@@ -640,6 +664,15 @@ function renderFlashcardRow(cards, card, i) {
         n.onclick = toggle;
     });
     head.appendChild(badge);
+
+    var warns = flashcardWarnings(card);
+    if (warns.length) {
+        var warnBadge = el('span', 'badge warn', 'Split this card');
+        warnBadge.title = warns.join('\n');
+        warnBadge.style.cursor = 'pointer';
+        warnBadge.onclick = toggle;
+        head.appendChild(warnBadge);
+    }
     head.appendChild(previewEl);
 
     var up = el('button', '', '&uarr;'); up.title = 'Move up'; up.disabled = i === 0;
@@ -688,27 +721,50 @@ function renderFlashcardRow(cards, card, i) {
         form.appendChild(el('label', '', 'Chapter (filter on the site)'));
         form.appendChild(chapterSelect(state.db.chapters, card.chapter, function (v) { card.chapter = v; }));
 
-        form.appendChild(el('label', '', 'Definition (back of card — required)'));
+        form.appendChild(el('label', '', 'Definition (back of card — one short line, required)'));
         var defTa = el('textarea', '');
-        defTa.rows = 3;
+        defTa.rows = 2;
         defTa.value = card.definition || '';
         bindInput(defTa, function () { card.definition = defTa.value; });
         form.appendChild(defTa);
+        form.appendChild(el('div', 'inline-note', 'Keep it to about 100 characters — one idea per card.'));
 
-        form.appendChild(el('label', '', 'Details (optional — shown on the back)'));
-        var detTa = el('textarea', '');
-        detTa.rows = 3;
-        detTa.value = card.details || '';
-        bindInput(detTa, function () { card.details = detTa.value; });
-        form.appendChild(detTa);
+        form.appendChild(el('label', '', 'Bullets (optional — one short bullet per line, 3 max)'));
+        var ptsTa = el('textarea', '');
+        ptsTa.rows = 3;
+        ptsTa.style.fontFamily = "var(--code-font)";
+        ptsTa.value = (Array.isArray(card.points) ? card.points : []).join('\n');
+        bindInput(ptsTa, function () {
+            card.points = ptsTa.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        });
+        form.appendChild(ptsTa);
 
-        form.appendChild(el('label', '', 'Example (optional — shown on the back, keeps line breaks)'));
+        form.appendChild(el('label', '', 'Example (optional — one line on the back)'));
         var exTa = el('textarea', '');
-        exTa.rows = 3;
+        exTa.rows = 2;
         exTa.style.fontFamily = "var(--code-font)";
         exTa.value = card.example || '';
         bindInput(exTa, function () { card.example = exTa.value; });
         form.appendChild(exTa);
+
+        if (card.details) {
+            form.appendChild(el('label', '', 'Old "details" text (move it into bullets)'));
+            var detTa = el('textarea', '');
+            detTa.rows = 2;
+            detTa.value = card.details || '';
+            bindInput(detTa, function () { card.details = detTa.value; });
+            form.appendChild(detTa);
+            var mergeBtn = el('button', '', 'Move into bullets');
+            mergeBtn.style.marginTop = '6px';
+            mergeBtn.onclick = function () {
+                var add = String(card.details || '').split(/\s*(?:\n|\u2022)\s*/)
+                    .map(function (s) { return s.trim(); }).filter(Boolean);
+                card.points = (Array.isArray(card.points) ? card.points : []).concat(add).slice(0, FC_POINTS_MAX);
+                delete card.details;
+                renderAll();
+            };
+            form.appendChild(mergeBtn);
+        }
 
         var sub = el('div', 'subblocks');
         sub.appendChild(el('label', '', 'Questions (flashcard Q/A practice + question mode)'));
@@ -729,7 +785,8 @@ function renderQuizEditor() {
     wrap.appendChild(el('h2', '', 'Quiz Questions'));
     wrap.appendChild(el('div', 'inline-note',
         'These power the <strong>Quiz</strong> page (multiple choice + explanations, and the Speed Round). ' +
-        'Mark the correct option with the radio button.'));
+        'Mark the correct option with the radio button. Keep explanations to one short line — ' +
+        'they sit under the question, not on a flashcard.'));
 
     var addBtn = el('button', 'primary', '+ New question');
     addBtn.onclick = function () {
