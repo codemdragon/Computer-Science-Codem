@@ -929,44 +929,46 @@ function renderQuizRow(questions, q, i) {
 }
 
 // ---------- Pseudocode Builder editor ----------
-// Write the snippet with {{placeholder}} tokens, then describe each placeholder.
-function pseudoBlankKeys(code) {
-    var keys = [];
-    String(code || '').replace(/\{\{([^}]+)\}\}/g, function (m, k) {
-        k = k.trim();
-        if (keys.indexOf(k) === -1) keys.push(k);
-        return m;
-    });
-    return keys;
+// One entry per line of pseudocode: the code, the English task, and which
+// tokens are blanked in the keyword stages.
+var PS_PUNCT = ['(', ')', '[', ']', '{', '}', '.', ',', ':', '^'];
+
+function pseudoTokenize(line) {
+    var t = String(line == null ? '' : line).trim();
+    PS_PUNCT.forEach(function (ch) { t = t.split(ch).join(' ' + ch + ' '); });
+    return t.split(/\s+/).filter(function (x) { return x !== ''; });
 }
 
 function pseudoWarnings(snippet) {
     var w = [];
-    var keys = pseudoBlankKeys((snippet.code || []).join('\n'));
-    if (keys.length < 3) w.push('Only ' + keys.length + ' blank(s) — the game needs at least 3');
-    keys.forEach(function (k) {
-        var b = (snippet.blanks || {})[k];
-        if (!b || !b.a) { w.push('Blank "' + k + '" has no answer'); return; }
-        var opts = b.opts || [];
-        if (opts.length < 3) w.push('Blank "' + k + '" needs at least 3 options');
-        if (opts.indexOf(b.a) === -1) w.push('Blank "' + k + '" — the answer is not one of the options');
+    var lines = Array.isArray(snippet.lines) ? snippet.lines : [];
+    if (!snippet.task) w.push('Add the task — it is where the names are given to the student');
+    if (lines.length < 2) w.push('A snippet needs at least 2 lines');
+    var drilled = 0;
+    lines.forEach(function (ln, i) {
+        var toks = pseudoTokenize(ln.code);
+        if (!toks.length) { w.push('Line ' + (i + 1) + ' is empty'); return; }
+        if (!ln.q) w.push('Line ' + (i + 1) + ' has no prompt');
+        (ln.drill || []).forEach(function (d) {
+            drilled++;
+            if (d >= toks.length) w.push('Line ' + (i + 1) + ' blanks token ' + d + ' which does not exist');
+            else if (/^(string|integer|real|boolean|char)$/i.test(toks[d])) {
+                w.push('Line ' + (i + 1) + ': do not blank the datatype name "' + toks[d] + '"');
+            }
+        });
     });
-    Object.keys(snippet.blanks || {}).forEach(function (k) {
-        if (keys.indexOf(k) === -1) w.push('Blank "' + k + '" is not used in the code any more');
-    });
+    if (drilled < 4) w.push('Only ' + drilled + ' keyword blank(s) — blank a few more syntax tokens');
+    if ((snippet.distractors || []).length < 6) {
+        w.push('Add at least 6 decoy tokens (e.g. VAR, END, =, :=) for the multiple choice options');
+    }
     return w;
 }
 
 function pseudoPlan(snippet) {
-    var n = pseudoBlankKeys((snippet.code || []).join('\n')).length;
-    if (n < 1) return '';
-    var sizes = [];
-    for (var k = 1; k <= Math.min(3, Math.max(n - 1, 0)); k++) sizes.push(k);
-    if (sizes[sizes.length - 1] !== n) sizes.push(n);
-    var steps = sizes.map(function (s, i) {
-        return i === sizes.length - 1 ? 'all ' + s + ' (build it)' : s + ' blank' + (s === 1 ? '' : 's');
-    });
-    return 'Stages: ' + steps.join(' \u2192 ') + ' \u2192 type it';
+    var lines = Array.isArray(snippet.lines) ? snippet.lines : [];
+    var drilled = lines.reduce(function (n, ln) { return n + (ln.drill || []).length; }, 0);
+    return 'Stages: keywords (' + drilled + ' questions) \u2192 whole snippet (same tokens) \u2192 token bank (' +
+        lines.length + ' lines) \u2192 type lines (' + lines.length + ') \u2192 write it from memory';
 }
 
 function renderPseudoEditor() {
@@ -977,10 +979,11 @@ function renderPseudoEditor() {
     var wrap = el('div', 'editor-card');
     wrap.appendChild(el('h2', '', 'Pseudocode Builder (UDD)'));
     wrap.appendChild(el('div', 'inline-note',
-        'Powers the <strong>Pseudocode Builder</strong> game. Write the snippet in the code box using ' +
-        '<code>{{placeholder}}</code> tokens, then give each placeholder a question, the correct answer and ' +
-        'three or more options. The game hides one blank, then two, then three, then the whole snippet ' +
-        '(multiple choice), and finally asks the student to type it from memory.'));
+        'Powers the <strong>Pseudocode Builder</strong> game. Give each line the <strong>code</strong> and an ' +
+        '<strong>English task</strong> — the task is where the student gets the names (MyDay, MyPtr\u2026), ' +
+        'so the syntax has to come from them. Tick which tokens are <strong>blanked</strong> in the keyword ' +
+        'stages (keywords and punctuation only, never the datatype name). The game then runs: keywords \u2192 ' +
+        'whole snippet \u2192 token bank (with decoys) \u2192 type each line \u2192 write it from memory.'));
 
     var addBtn = el('button', 'primary', '+ New snippet');
     addBtn.onclick = function () {
@@ -989,8 +992,9 @@ function renderPseudoEditor() {
             title: 'New snippet',
             intro: '',
             chapter: state.db.chapters.length ? state.db.chapters[0].id : '',
-            code: ['TYPE {{typeName}} = ({{values}})'],
-            blanks: { typeName: { q: 'What is the name of the type?', a: '', opts: ['', '', ''] } }
+            task: 'Describe what has to be written, including every name.',
+            distractors: ['VAR', 'DEFINE', 'STRUCT', '=', '<-', ':='],
+            lines: [{ code: 'TYPE MyType = (A,B,C)', q: 'Declare an enumerated type MyType with the values A, B and C.', drill: [0] }]
         };
         ensureUid(s);
         state.db.pseudocode.push(s);
@@ -1016,15 +1020,14 @@ function renderPseudoRow(snippets, snippet, i) {
     ensureUid(snippet);
     var uid = snippet._uid;
     var isOpen = !!state.openUids[uid];
-    var keys = pseudoBlankKeys((snippet.code || []).join('\n'));
-    var warns = pseudoWarnings(snippet);
+    var lines = Array.isArray(snippet.lines) ? snippet.lines : [];
+    var drilled = lines.reduce(function (n, ln) { return n + (ln.drill || []).length; }, 0);
 
     var row = el('div', 'brow');
     var head = el('div', 'brow-head');
-    var badge = el('span', 'badge', esc(snippet.chapter || '—'));
+    var badge = el('span', 'badge', esc(snippet.chapter || '\u2014'));
     var previewEl = el('span', 'brow-preview',
-        esc(snippet.title || '(untitled)') + ' · ' + keys.length + ' blanks · ' +
-        ((snippet.code || []).length) + ' lines');
+        esc(snippet.title || '(untitled)') + ' \u00b7 ' + lines.length + ' lines \u00b7 ' + drilled + ' keyword blanks');
     var toggle = function () {
         if (state.openUids[uid]) delete state.openUids[uid];
         else state.openUids[uid] = true;
@@ -1036,8 +1039,10 @@ function renderPseudoRow(snippets, snippet, i) {
         n.onclick = toggle;
     });
     head.appendChild(badge);
+
+    var warns = pseudoWarnings(snippet);
     if (warns.length) {
-        var warnBadge = el('span', 'badge warn', 'Check blanks');
+        var warnBadge = el('span', 'badge warn', 'Check content');
         warnBadge.title = warns.join('\n');
         warnBadge.style.cursor = 'pointer';
         warnBadge.onclick = toggle;
@@ -1089,95 +1094,108 @@ function renderPseudoRow(snippets, snippet, i) {
     row1.appendChild(titleWrap); row1.appendChild(idWrap);
     form.appendChild(row1);
 
-    form.appendChild(el('label', '', 'Chapter (filter, usually data-types)'));
+    form.appendChild(el('label', '', 'Chapter (usually data-types)'));
     form.appendChild(chapterSelect(state.db.chapters, snippet.chapter, function (v) { snippet.chapter = v; }));
 
-    form.appendChild(el('label', '', 'Intro (one line shown above the game)'));
+    form.appendChild(el('label', '', 'Intro (one line above the game)'));
     var introTa = el('textarea', '');
     introTa.rows = 2;
     introTa.value = snippet.intro || '';
     bindInput(introTa, function () { snippet.intro = introTa.value; });
     form.appendChild(introTa);
 
-    form.appendChild(el('label', '', 'Pseudocode — wrap each blank in {{ }} (indentation is kept)'));
-    var codeTa = el('textarea', '');
-    codeTa.rows = 8;
-    codeTa.style.fontFamily = 'var(--code-font)';
-    codeTa.style.whiteSpace = 'pre';
-    codeTa.value = (snippet.code || []).join('\n');
-    codeTa.addEventListener('input', function () {
-        snippet.code = codeTa.value.split('\n');
-    });
-    codeTa.addEventListener('change', function () {
-        snippet.code = codeTa.value.split('\n');
-        var now = pseudoBlankKeys(codeTa.value).join('|');
-        if (now !== keys.join('|')) renderAll();   // placeholders changed — refresh the blank editors
-    });
-    form.appendChild(codeTa);
+    form.appendChild(el('label', '', 'Task — every name the student needs, but no syntax'));
+    var taskTa = el('textarea', '');
+    taskTa.rows = 2;
+    taskTa.value = snippet.task || '';
+    bindInput(taskTa, function () { snippet.task = taskTa.value; });
+    form.appendChild(taskTa);
 
-    if (!keys.length) {
-        form.appendChild(el('div', 'inline-note', 'No {{placeholders}} found yet in the code above.'));
-    }
+    form.appendChild(el('label', '', 'Decoy tokens (comma separated) — the wrong options and bank decoys'));
+    var disTa = el('input', '');
+    disTa.type = 'text';
+    disTa.style.fontFamily = 'var(--code-font)';
+    disTa.value = (snippet.distractors || []).join(', ');
+    bindInput(disTa, function () {
+        snippet.distractors = disTa.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    });
+    form.appendChild(disTa);
 
     var sub = el('div', 'subblocks');
-    sub.appendChild(el('div', 'mini-label', 'Blanks — generated from the {{placeholders}} in the code'));
-    snippet.blanks = snippet.blanks || {};
+    sub.appendChild(el('div', 'mini-label', 'Lines — code, task line and which tokens get blanked'));
+    snippet.lines = lines;
 
-    keys.forEach(function (k) {
-        var b = snippet.blanks[k] || (snippet.blanks[k] = { q: '', a: '', opts: ['', '', ''] });
+    lines.forEach(function (ln, li) {
         var block = el('div', 'ps-blank-editor');
+        var toks = pseudoTokenize(ln.code);
 
         var head3 = el('div', 'ps-blank-head');
-        head3.appendChild(el('code', '', '{{' + esc(k) + '}}'));
+        head3.appendChild(el('span', 'mini-label', 'Line ' + (li + 1) + ' \u2014 ' + toks.length + ' tokens'));
+        var acts = el('div', '');
+        var upL = el('button', '', '&uarr;'); upL.disabled = li === 0; upL.title = 'Move line up';
+        var downL = el('button', '', '&darr;'); downL.disabled = li === lines.length - 1; downL.title = 'Move line down';
         var rm = el('button', 'danger', 'Remove');
-        rm.title = 'Remove this blank from the code';
-        rm.onclick = function () {
-            snippet.code = (snippet.code || []).map(function (line) {
-                return line.replace(new RegExp('\\{\\{\\s*' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\}\\}', 'g'), b.a || '');
-            });
-            delete snippet.blanks[k];
-            renderAll();
-        };
-        head3.appendChild(rm);
+        upL.onclick = function () { var t = lines[li - 1]; lines[li - 1] = lines[li]; lines[li] = t; renderAll(); };
+        downL.onclick = function () { var t = lines[li + 1]; lines[li + 1] = lines[li]; lines[li] = t; renderAll(); };
+        rm.onclick = function () { lines.splice(li, 1); renderAll(); };
+        acts.appendChild(upL); acts.appendChild(downL); acts.appendChild(rm);
+        head3.appendChild(acts);
         block.appendChild(head3);
 
-        block.appendChild(el('label', '', 'Question shown to the student'));
+        block.appendChild(el('label', '', 'Code (indentation is kept)'));
+        var codeIn = el('input', '');
+        codeIn.type = 'text';
+        codeIn.style.fontFamily = 'var(--code-font)';
+        codeIn.value = ln.code || '';
+        codeIn.addEventListener('input', function () { ln.code = codeIn.value; });
+        codeIn.addEventListener('change', function () {
+            ln.code = codeIn.value;
+            ln.drill = (ln.drill || []).filter(function (d) { return d < pseudoTokenize(ln.code).length; });
+            renderAll();   // token chips changed
+        });
+        block.appendChild(codeIn);
+
+        block.appendChild(el('label', '', 'Task for this line (what it has to do, with the names)'));
         var qIn = el('input', '');
         qIn.type = 'text';
-        qIn.value = b.q || '';
-        bindInput(qIn, function () { b.q = qIn.value; });
+        qIn.value = ln.q || '';
+        bindInput(qIn, function () { ln.q = qIn.value; });
         block.appendChild(qIn);
 
-        block.appendChild(el('label', '', 'Correct answer'));
-        var aIn = el('input', '');
-        aIn.type = 'text';
-        aIn.style.fontFamily = 'var(--code-font)';
-        aIn.value = b.a || '';
-        bindInput(aIn, function () { b.a = aIn.value; });
-        block.appendChild(aIn);
-
-        block.appendChild(el('label', '', 'Options — one per line, 3 or more, must include the answer'));
-        var optTa = el('textarea', '');
-        optTa.rows = 3;
-        optTa.style.fontFamily = 'var(--code-font)';
-        optTa.value = (b.opts || []).join('\n');
-        bindInput(optTa, function () {
-            b.opts = optTa.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        block.appendChild(el('label', '', 'Blank these tokens in the keyword stages'));
+        var chipRow = el('div', 'ps-token-chips');
+        toks.forEach(function (tk, ti) {
+            var on = (ln.drill || []).indexOf(ti) !== -1;
+            var chip = el('button', on ? 'primary' : '', esc(tk));
+            chip.type = 'button';
+            chip.style.fontFamily = 'var(--code-font)';
+            chip.style.fontSize = '.75rem';
+            chip.style.padding = '2px 8px';
+            chip.title = on ? 'Blanked in the keyword stages' : 'Shown to the student';
+            chip.onclick = function () {
+                ln.drill = ln.drill || [];
+                var at = ln.drill.indexOf(ti);
+                if (at === -1) ln.drill.push(ti);
+                else ln.drill.splice(at, 1);
+                ln.drill.sort(function (a, b) { return a - b; });
+                renderAll();
+            };
+            chipRow.appendChild(chip);
         });
-        block.appendChild(optTa);
-
-        var problems = [];
-        if (!b.a) problems.push('no correct answer yet');
-        if ((b.opts || []).length < 3) problems.push('needs at least 3 options');
-        else if (b.a && (b.opts || []).indexOf(b.a) === -1) problems.push('the answer is not one of the options');
-        if (problems.length) block.appendChild(el('div', 'inline-note warn-note', 'Check: ' + problems.join(', ')));
+        block.appendChild(chipRow);
 
         sub.appendChild(block);
     });
+
+    var addLine = el('button', '', '+ Add line');
+    addLine.onclick = function () {
+        lines.push({ code: '', q: '', drill: [] });
+        renderAll();
+    };
+    sub.appendChild(addLine);
     form.appendChild(sub);
 
-    var plan = pseudoPlan(snippet);
-    if (plan) form.appendChild(el('div', 'inline-note', plan));
+    form.appendChild(el('div', 'inline-note', pseudoPlan(snippet)));
 
     row.appendChild(form);
     return row;

@@ -1008,7 +1008,7 @@
         /* --- Pseudocode Builder (UDD mini game) --- */
         .ps-snippets { margin-bottom: 0.4rem; }
 
-        .ps-card { cursor: default; max-width: 720px; }
+        .ps-card { cursor: default; max-width: 760px; }
         .ps-card .flashcard-inner { transform: none; }
 
         .ps-face {
@@ -1028,7 +1028,6 @@
             gap: 10px;
             flex-wrap: wrap;
             padding-bottom: 0.7rem;
-            margin-bottom: 0.2rem;
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -1042,28 +1041,23 @@
 
         .ps-dots { display: inline-flex; gap: 5px; }
 
-        .ps-dot {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: var(--border-color);
-        }
-
+        .ps-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border-color); }
         .ps-dot.done { background: var(--accent-blue-bright); }
         .ps-dot.on { background: #26de81; transform: scale(1.15); }
 
         .ps-count { margin-left: auto; font-size: 0.78rem; color: var(--text-muted); }
 
-        .ps-blankcount {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 0.78rem;
+        .ps-task {
+            font-size: 0.88rem;
             color: var(--text-muted);
-            margin: 0.7rem 0 0.1rem;
+            margin: 0.75rem 0 0;
+            padding: 0.55rem 0.8rem;
+            background: rgba(0, 102, 204, 0.07);
+            border-left: 2px solid var(--accent-blue);
+            border-radius: 4px;
         }
 
-        .ps-blankcount .ic { color: var(--accent-blue-bright); }
+        .ps-task strong { color: var(--accent-blue-bright); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 1px; }
 
         .ps-prompt {
             display: flex;
@@ -1079,7 +1073,7 @@
         .ps-code {
             font-family: var(--code-font);
             font-size: 0.88rem;
-            line-height: 2;
+            line-height: 2.1;
             background: #0a0a0a;
             border: 1px solid var(--border-color);
             border-radius: 6px;
@@ -1091,44 +1085,68 @@
         }
 
         .ps-line { display: block; white-space: pre; }
+        .ps-tok { color: var(--text-main); }
+        .ps-tok-ok { color: #26de81; }
 
-        .ps-tk { color: var(--text-main); }
-
-        .ps-given { color: #7fd4ff; }
-
-        .ps-reveal.ps-ok { color: #26de81; }
-
-        .ps-reveal.ps-bad {
-            color: #e55039;
-            text-decoration: line-through;
-            text-decoration-thickness: 1px;
-        }
-
-        .ps-blank {
+        /* the blank the learner has to produce */
+        .ps-gap {
             display: inline-block;
-            min-width: 62px;
-            text-align: center;
+            min-width: 58px;
+            height: 1.05em;
+            vertical-align: -0.15em;
             border-bottom: 1.5px dashed var(--accent-blue-bright);
             background: rgba(0, 128, 255, 0.07);
-            color: var(--accent-blue-bright);
-            font-weight: 700;
-            letter-spacing: 1px;
+            border-radius: 2px;
         }
 
-        .ps-qline {
-            font-size: 0.95rem;
+        /* token bank + tray (faded Parsons) */
+        .ps-bank { display: flex; flex-wrap: wrap; gap: 7px; margin: 0.5rem 0 0.35rem; }
+
+        .ps-bank-tok {
+            font-family: var(--code-font);
+            font-size: 0.85rem;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-main);
+            padding: 6px 11px;
+            cursor: pointer;
+            transition: all 0.12s;
+            touch-action: manipulation;
+        }
+
+        .ps-bank-tok:hover:not(.used) { border-color: var(--accent-blue-bright); background: var(--bg-card-hover); }
+        .ps-bank-tok.used { opacity: 0.25; cursor: default; }
+
+        .ps-tray-tok {
+            font-family: var(--code-font);
+            font-size: 0.85rem;
+            background: rgba(0, 128, 255, 0.14);
+            border: 1px solid var(--accent-blue-bright);
+            border-radius: 5px;
             color: white;
-            margin: 0.2rem 0 0.7rem;
+            padding: 3px 9px;
+            cursor: pointer;
+            touch-action: manipulation;
         }
 
+        .ps-caret {
+            display: inline-block;
+            width: 2px;
+            height: 1.05em;
+            vertical-align: -0.15em;
+            background: var(--accent-blue-bright);
+            animation: ps-blink 1s steps(2, start) infinite;
+        }
+
+        @keyframes ps-blink { to { visibility: hidden; } }
+
+        .ps-bank-note { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+
+        .ps-qline { font-size: 0.95rem; color: white; margin: 0.1rem 0 0.7rem; }
         .ps-qline strong { color: var(--accent-blue-bright); }
 
-        .ps-options {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 0.3rem;
-        }
+        .ps-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.3rem; }
 
         .ps-opt {
             font-family: var(--code-font);
@@ -1145,6 +1163,7 @@
 
         .ps-opt:hover { border-color: var(--accent-blue-bright); background: var(--bg-card-hover); }
 
+        /* feedback */
         .ps-feedback {
             display: flex;
             align-items: center;
@@ -1158,12 +1177,54 @@
         }
 
         .ps-feedback .ic { flex-shrink: 0; }
+        .ps-feedback code, .ps-feedback-line code { font-family: var(--code-font); }
         .ps-feedback.ok { border-left-color: #26de81; color: #26de81; background: rgba(38, 222, 129, 0.1); }
         .ps-feedback.bad { border-left-color: #e55039; color: #e55039; background: rgba(229, 80, 57, 0.1); }
 
-        .ps-inputs { display: flex; flex-direction: column; gap: 8px; }
+        .ps-feedback-line {
+            font-size: 0.85rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 4px;
+            margin-top: 0.45rem;
+        }
 
-        .ps-input-row { display: flex; align-items: center; gap: 9px; }
+        .ps-feedback-line.ok { color: #26de81; background: rgba(38, 222, 129, 0.08); }
+        .ps-feedback-line.bad { color: #e55039; background: rgba(229, 80, 57, 0.08); }
+
+        /* token level diff */
+        .ps-diff {
+            margin: 0.4rem 0 0.3rem;
+            padding: 0.5rem 0.7rem;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.82rem;
+        }
+
+        .ps-diff-row { display: flex; gap: 8px; align-items: baseline; }
+        .ps-diff-row + .ps-diff-row { margin-top: 3px; }
+
+        .ps-diff-label {
+            flex-shrink: 0;
+            width: 74px;
+            font-size: 0.66rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+        }
+
+        .ps-diff-row code { font-family: var(--code-font); white-space: pre-wrap; word-break: break-word; }
+        .ps-diff-ok { color: #26de81; }
+        .ps-diff-missing { color: var(--accent-blue-bright); border-bottom: 1.5px dashed var(--accent-blue-bright); }
+        .ps-diff-extra { color: #e55039; text-decoration: line-through; }
+
+        .ps-hint { font-size: 0.82rem; color: #d4760a; margin-top: 0.4rem; }
+        .ps-hint code { font-family: var(--code-font); color: #d4760a; }
+
+        /* typing */
+        .ps-prompts { display: flex; flex-direction: column; gap: 9px; }
+
+        .ps-prompt-row { display: flex; align-items: center; gap: 9px; }
 
         .ps-input-num {
             flex-shrink: 0;
@@ -1180,13 +1241,7 @@
         }
 
         .ps-input-main { flex: 1; min-width: 0; }
-
-        .ps-input-q {
-            display: block;
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            margin-bottom: 3px;
-        }
+        .ps-input-q { display: block; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 3px; }
 
         .ps-input {
             width: 100%;
@@ -1207,11 +1262,29 @@
         .ps-mark.good { color: #26de81; }
         .ps-mark.bad { color: #e55039; }
 
-        @media (max-width: 640px) {
-            .ps-code { font-size: 0.78rem; line-height: 1.9; }
-            .ps-face { padding: 1.1rem 1rem; }
-            .ps-count { margin-left: 0; }
+        .ps-revealed {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 3px;
+            font-size: 0.72rem;
+            color: #d4760a;
         }
+
+        .ps-peek {
+            margin: 0.6rem 0 0;
+            padding: 0.6rem 0.8rem 0.1rem;
+            border: 1px dashed var(--accent-blue-bright);
+            border-radius: 6px;
+            font-size: 0.78rem;
+            color: var(--accent-blue-bright);
+        }
+
+        .ps-peek .ps-code { margin-top: 0.4rem; }
+
+        .ps-done { text-align: center; }
+        .ps-done h3 { font-size: 1.3rem; color: white; margin-bottom: 0.3rem; }
+        .ps-done .ps-code { text-align: left; margin-top: 0.9rem; }
 
         @media (max-width: 640px) {
             .quiz-options { grid-template-columns: 1fr; }

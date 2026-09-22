@@ -2029,347 +2029,214 @@
     {
       "id": "ps-enumerated",
       "title": "Enumerated — Day",
-      "intro": "An enumerated type is an ordered list of values, written without quotes or commas.",
+      "intro": "An enumerated type is written in order, with no quotes and no commas between the brackets.",
       "chapter": "data-types",
-      "code": [
-        "TYPE {{typeName}} = ({{values}})",
-        "",
-        "DECLARE {{varName}} : {{varType}}",
-        "{{varName}} <-- {{day}}"
+      "task": "Declare an enumerated type Day holding the seven weekdays, declare a variable MyDay of that type, then store Tuesday in it.",
+      "distractors": [
+        "VAR",
+        "DEFINE",
+        "STRUCT",
+        "=",
+        "<-",
+        ":=",
+        "STRING",
+        "DECLARE",
+        "TYPE",
+        "ENDTYPE",
+        "(",
+        "^",
+        "*"
       ],
-      "blanks": {
-        "typeName": {
-          "q": "What is the name of the enumerated type?",
-          "a": "Day",
-          "opts": [
-            "Day",
-            "Week",
-            "TYPE",
-            "Enum"
+      "lines": [
+        {
+          "code": "TYPE Day = (Mon,Tue,Wed,Thu,Fri,Sat,Sun)",
+          "q": "Declare an enumerated type called Day, listing the seven weekdays in order.",
+          "drill": [
+            0
           ]
         },
-        "values": {
-          "q": "Write the seven values of the enumeration.",
-          "a": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
-          "opts": [
-            "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
-            "\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\",\"Sun\"",
-            "Mon Tue Wed Thu Fri Sat Sun",
-            "1,2,3,4,5,6,7"
+        {
+          "code": "DECLARE MyDay : Day",
+          "q": "Declare a variable MyDay whose type is Day.",
+          "drill": [
+            0,
+            2
           ]
         },
-        "varName": {
-          "q": "Declare a variable that uses the new type.",
-          "a": "MyDay",
-          "opts": [
-            "MyDay",
-            "Day",
-            "VAR Day",
-            "MyDay : Day"
-          ]
-        },
-        "varType": {
-          "q": "Which type does that variable use?",
-          "a": "Day",
-          "opts": [
-            "Day",
-            "MyDay",
-            "ENUM",
-            "STRING"
-          ]
-        },
-        "day": {
-          "q": "Assign Tuesday to the variable.",
-          "a": "Tue",
-          "opts": [
-            "Tue",
-            "\"Tue\"",
-            "Tuesdays",
-            "Day"
+        {
+          "code": "MyDay <-- Tue",
+          "q": "Store the value Tue in MyDay.",
+          "drill": [
+            1
           ]
         }
-      }
+      ]
     },
     {
       "id": "ps-pointer",
       "title": "Pointer",
-      "intro": "A pointer stores a memory address — ^Name is the address, Name^ is the value stored there.",
+      "intro": "^Name gives the address a pointer holds; Name^ gives the value stored at that address.",
       "chapter": "data-types",
-      "code": [
-        "TYPE {{ptrType}} = {{caret}}{{target}}",
-        "",
-        "DECLARE {{varName}} : {{ptrType}}",
-        "OUTPUT {{addr}}",
-        "OUTPUT {{val}}"
+      "task": "Declare a pointer type MyPointer that points to an INTEGER, declare MyPtr, then output the memory location it holds and the value stored there.",
+      "distractors": [
+        "DECLARE",
+        "TYPE",
+        "SET OF",
+        "*",
+        "&",
+        "->",
+        ".",
+        "<--",
+        "=",
+        "OUTPUT",
+        ":",
+        "REF"
       ],
-      "blanks": {
-        "ptrType": {
-          "q": "What is the name of the pointer type?",
-          "a": "MyPointer",
-          "opts": [
-            "MyPointer",
-            "Pointer",
-            "MyInt",
-            "INTEGER"
+      "lines": [
+        {
+          "code": "TYPE MyPointer = ^INTEGER",
+          "q": "Declare a pointer type called MyPointer that points at an INTEGER.",
+          "drill": [
+            0,
+            2
           ]
         },
-        "caret": {
-          "q": "Which symbol makes a type a pointer?",
-          "a": "^",
-          "opts": [
-            "^",
-            "*",
-            "&",
-            "->"
+        {
+          "code": "DECLARE MyPtr : MyPointer",
+          "q": "Declare a variable MyPtr of the pointer type.",
+          "drill": [
+            0,
+            2
           ]
         },
-        "target": {
-          "q": "What does the pointer point to?",
-          "a": "INTEGER",
-          "opts": [
-            "INTEGER",
-            "STRING",
-            "REAL",
-            "MyPointer"
+        {
+          "code": "OUTPUT ^MyPtr",
+          "q": "Output the memory address that MyPtr holds.",
+          "drill": [
+            1
           ]
         },
-        "varName": {
-          "q": "Declare a variable of the pointer type.",
-          "a": "MyPtr",
-          "opts": [
-            "MyPtr",
-            "MyPointer",
-            "Ptr : MyPointer",
-            "Pointer"
-          ]
-        },
-        "addr": {
-          "q": "Output the memory location the pointer holds.",
-          "a": "^MyPtr",
-          "opts": [
-            "^MyPtr",
-            "MyPtr^",
-            "MyPtr",
-            "^^MyPtr"
-          ]
-        },
-        "val": {
-          "q": "Output the value stored at that location.",
-          "a": "MyPtr^",
-          "opts": [
-            "MyPtr^",
-            "^MyPtr",
-            "MyPtr",
-            "MyPtr^^"
+        {
+          "code": "OUTPUT MyPtr^",
+          "q": "Output the value stored at the address in MyPtr.",
+          "drill": [
+            2
           ]
         }
-      }
+      ]
     },
     {
       "id": "ps-record",
       "title": "Record — Student",
-      "intro": "A record groups different datatypes under one identifier, and each field is reached with a dot.",
+      "intro": "A record groups different datatypes; the definition opens with TYPE and closes with ENDTYPE.",
       "chapter": "data-types",
-      "code": [
-        "TYPE {{typeName}}",
-        "    DECLARE {{field1}} : {{type1}}",
-        "    DECLARE {{field2}} : {{type2}}",
-        "    DECLARE {{field3}} : {{type3}}",
+      "task": "Define a record type Student with the fields Surname (STRING) and Age (INTEGER), declare MyStudent, then fill both fields.",
+      "distractors": [
+        "VAR",
+        "STRUCT",
+        "OBJECT",
+        "END",
+        "=",
+        "<-",
+        ":=",
+        "INTEGER",
+        "DECLARE",
+        "TYPE",
         "ENDTYPE",
-        "",
-        "DECLARE {{varName}} : {{typeName}}",
-        "{{varName}}.{{field1}} <-- {{val1}}",
-        "{{varName}}.{{field2}} <-- {{val2}}",
-        "{{varName}}.{{field3}} <-- {{val3}}"
+        ":",
+        ",",
+        "STRING"
       ],
-      "blanks": {
-        "typeName": {
-          "q": "What is the record type called?",
-          "a": "Student",
-          "opts": [
-            "Student",
-            "Record",
-            "MyStudent",
-            "TYPE Student"
+      "lines": [
+        {
+          "code": "TYPE Student",
+          "q": "Open a record definition called Student.",
+          "drill": [
+            0
           ]
         },
-        "field1": {
-          "q": "Name the first field (the surname).",
-          "a": "Surname",
-          "opts": [
-            "Surname",
-            "Name",
-            "STRING",
-            "Surname : STRING"
+        {
+          "code": "    DECLARE Surname : STRING",
+          "q": "Declare the field Surname as a STRING.",
+          "drill": [
+            0,
+            2
           ]
         },
-        "type1": {
-          "q": "Which datatype suits a surname?",
-          "a": "STRING",
-          "opts": [
-            "STRING",
-            "CHAR",
-            "INTEGER",
-            "REAL"
+        {
+          "code": "    DECLARE Age : INTEGER",
+          "q": "Declare the field Age as an INTEGER.",
+          "drill": []
+        },
+        {
+          "code": "ENDTYPE",
+          "q": "Close the record definition.",
+          "drill": [
+            0
           ]
         },
-        "field2": {
-          "q": "Name the second field (the age).",
-          "a": "Age",
-          "opts": [
-            "Age",
-            "Mark",
-            "INTEGER",
-            "Date"
+        {
+          "code": "DECLARE MyStudent : Student",
+          "q": "Declare a variable MyStudent of the record type.",
+          "drill": [
+            0,
+            2
           ]
         },
-        "type2": {
-          "q": "Which datatype suits an age?",
-          "a": "INTEGER",
-          "opts": [
-            "INTEGER",
-            "REAL",
-            "STRING",
-            "DECIMAL"
+        {
+          "code": "MyStudent.Surname <-- \"Esa\"",
+          "q": "Store the name Esa in the Surname field of MyStudent.",
+          "drill": [
+            3
           ]
         },
-        "field3": {
-          "q": "Name the third field (the mark).",
-          "a": "Mark",
-          "opts": [
-            "Mark",
-            "Age",
-            "Score",
-            "REAL"
-          ]
-        },
-        "type3": {
-          "q": "Which datatype suits a mark like 90.5?",
-          "a": "REAL",
-          "opts": [
-            "REAL",
-            "INTEGER",
-            "FLOAT",
-            "STRING"
-          ]
-        },
-        "varName": {
-          "q": "Declare a variable of the record type.",
-          "a": "MyStudent",
-          "opts": [
-            "MyStudent",
-            "Student",
-            "Record",
-            "MyStudent : Student"
-          ]
-        },
-        "val1": {
-          "q": "Assign the surname Esa.",
-          "a": "\"Esa\"",
-          "opts": [
-            "\"Esa\"",
-            "Esa",
-            "\"Surname\"",
-            "Surname"
-          ]
-        },
-        "val2": {
-          "q": "Assign the age 15.",
-          "a": "15",
-          "opts": [
-            "15",
-            "\"15\"",
-            "Age",
-            "15.0"
-          ]
-        },
-        "val3": {
-          "q": "Assign the mark 90.",
-          "a": "90",
-          "alt": [
-            "90.0"
-          ],
-          "opts": [
-            "90",
-            "\"90\"",
-            "90%",
-            "Mark"
-          ]
+        {
+          "code": "MyStudent.Age <-- 15",
+          "q": "Store the age 15 in the Age field of MyStudent.",
+          "drill": []
         }
-      }
+      ]
     },
     {
       "id": "ps-set",
       "title": "Set",
-      "intro": "A set is an unordered list of elements used with mathematical operations such as union.",
+      "intro": "Sets are unordered lists used with operations such as union; the values go inside brackets.",
       "chapter": "data-types",
-      "code": [
-        "TYPE {{setType}} = {{setOf}} {{itemType}}",
-        "",
-        "DEFINE {{setName}} ({{items}}) : {{declareType}}"
+      "task": "Declare a set type MySet that can hold integers, then define MyNumbers as the set holding 1, 2, 3 and 4.",
+      "distractors": [
+        "LIST",
+        "OF",
+        "SET",
+        "ARRAY",
+        "=",
+        "<-",
+        ":=",
+        "INTEGER",
+        "TYPE",
+        "DEFINE",
+        "SET OF",
+        "{",
+        "[",
+        "DECLARE"
       ],
-      "blanks": {
-        "setType": {
-          "q": "What is the name of the set type?",
-          "a": "MySet",
-          "opts": [
-            "MySet",
-            "Set",
-            "SET OF",
-            "MyNumbers"
+      "lines": [
+        {
+          "code": "TYPE MySet = SET OF INTEGER",
+          "q": "Declare a set type MySet whose elements are integers.",
+          "drill": [
+            0,
+            3
           ]
         },
-        "setOf": {
-          "q": "Which keywords declare a set?",
-          "a": "SET OF",
-          "opts": [
-            "SET OF",
-            "SET",
-            "ARRAY OF",
-            "LIST OF"
-          ]
-        },
-        "itemType": {
-          "q": "What can the set hold?",
-          "a": "INTEGER",
-          "opts": [
-            "INTEGER",
-            "STRING",
-            "MySet",
-            "REAL"
-          ]
-        },
-        "setName": {
-          "q": "Define a set that holds the numbers 1 to 4.",
-          "a": "MyNumbers",
-          "opts": [
-            "MyNumbers",
-            "MySet",
-            "SET",
-            "Numbers : MySet"
-          ]
-        },
-        "items": {
-          "q": "Write the four values in the set.",
-          "a": "(1, 2, 3, 4)",
-          "opts": [
-            "(1, 2, 3, 4)",
-            "{1, 2, 3, 4}",
-            "1, 2, 3, 4",
-            "[1, 2, 3, 4]"
-          ]
-        },
-        "declareType": {
-          "q": "Which type is the new set given?",
-          "a": "MySet",
-          "opts": [
-            "MySet",
-            "MyNumbers",
-            "SET",
-            "INTEGER"
+        {
+          "code": "DEFINE MyNumbers (1, 2, 3, 4) : MySet",
+          "q": "Define MyNumbers as the set containing 1, 2, 3 and 4.",
+          "drill": [
+            0,
+            9
           ]
         }
-      }
+      ]
     }
   ]
 }
