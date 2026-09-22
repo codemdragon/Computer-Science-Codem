@@ -637,16 +637,17 @@
 
         .flashcard {
             perspective: 1200px;
-            height: 280px;
             margin: 1rem auto 1.5rem;
             cursor: pointer;
             max-width: 640px;
         }
 
+        /* Both faces share one grid cell, so the card is only ever as tall as its
+           content: no inner scrolling and no wall-of-text cards. */
         .flashcard-inner {
-            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);   /* never wider than the screen */
             width: 100%;
-            height: 100%;
             transition: transform 0.6s;
             transform-style: preserve-3d;
         }
@@ -655,21 +656,20 @@
 
         .flashcard-front,
         .flashcard-back {
-            position: absolute;
-            inset: 0;
+            grid-area: 1 / 1;
+            min-width: 0;
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 1.75rem 1.5rem;
+            min-height: 210px;
+            padding: 1.6rem 1.5rem;
             border-radius: 8px;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-left: 3px solid var(--accent-blue-bright);
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
         }
 
         .flashcard-front { text-align: center; }
@@ -677,7 +677,7 @@
         .flashcard-back {
             transform: rotateY(180deg);
             align-items: flex-start;
-            justify-content: flex-start;
+            justify-content: center;
             text-align: left;
         }
 
@@ -698,20 +698,50 @@
 
         .fc-def { font-size: 1.02rem; color: var(--text-main); }
 
-        .fc-extra {
-            margin-top: 0.75rem;
-            padding: 0.55rem 0.8rem;
+        /* Short bullets for the few cards that need more than one line */
+        .fc-points {
+            margin: 0.7rem 0 0;
+            padding: 0;
+            list-style: none;
+            width: 100%;
+        }
+
+        .fc-points li {
+            position: relative;
+            padding-left: 1.05rem;
+            margin-bottom: 0.3rem;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            color: var(--text-main);
+        }
+
+        .fc-points li::before {
+            content: "";
+            position: absolute;
+            left: 2px;
+            top: 0.55em;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--accent-blue-bright);
+        }
+
+        .fc-example,
+        .fc-from {
+            margin-top: 0.7rem;
+            padding: 0.5rem 0.75rem;
             background: rgba(0, 102, 204, 0.08);
             border-left: 2px solid var(--accent-blue);
             border-radius: 4px;
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             color: var(--text-main);
             width: 100%;
             white-space: pre-wrap;
             word-wrap: break-word;
         }
 
-        .fc-extra .fc-label {
+        .fc-example .fc-label,
+        .fc-from .fc-label {
             font-size: 0.65rem;
             text-transform: uppercase;
             letter-spacing: 1.5px;
@@ -720,6 +750,35 @@
             display: block;
             margin-bottom: 2px;
         }
+
+        .fc-done {
+            margin-left: 10px;
+            color: #26de81;
+            font-weight: 600;
+        }
+
+        /* --- Inline SVG icons (games) --- */
+        .ic {
+            width: 1em;
+            height: 1em;
+            display: inline-block;
+            vertical-align: -0.125em;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+
+        .nav-icon {
+            display: inline-flex;
+            vertical-align: -3px;
+            margin-right: 8px;
+            color: inherit;
+        }
+
+        .nav-icon .ic { width: 17px; height: 17px; }
 
         .fc-chapter {
             position: absolute;
@@ -940,17 +999,354 @@
         }
 
         .qz-results { text-align: center; }
-        .qz-emoji { font-size: 2.6rem; margin-bottom: 6px; }
+        .qz-result-icon { font-size: 2.6rem; line-height: 1; margin-bottom: 8px; color: var(--accent-blue-bright); }
+        .qz-result-icon .ic { stroke-width: 1.5; }
         .qz-results h3 { font-size: 1.4rem; color: white; }
         .qz-wrong { text-align: left; margin-top: 1.1rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
         .qz-wrong-title { font-weight: 700; color: var(--accent-blue-bright); margin-bottom: 0.6rem; font-size: 0.9rem; }
         .qz-wrong-item { font-size: 0.85rem; padding: 0.6rem 0.7rem; background: rgba(229, 80, 57, 0.06); border-radius: 4px; margin-bottom: 0.5rem; }
         .qz-wrong-item em { color: var(--text-muted); }
 
+        /* --- Pseudocode Builder (UDD mini game) --- */
+        .ps-snippets { margin-bottom: 0.4rem; }
+
+        .ps-card { cursor: default; max-width: min(760px, 100%); }
+        .ps-card .flashcard-inner { transform: none; }
+
+        .ps-face {
+            grid-area: 1 / 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 1.35rem 1.4rem;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent-blue-bright);
+        }
+
+        .ps-stagebar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding-bottom: 0.7rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ps-phase {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--accent-blue-bright);
+        }
+
+        .ps-dots { display: inline-flex; gap: 5px; }
+
+        .ps-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border-color); }
+        .ps-dot.done { background: var(--accent-blue-bright); }
+        .ps-dot.on { background: #26de81; transform: scale(1.15); }
+
+        .ps-count { margin-left: auto; font-size: 0.78rem; color: var(--text-muted); }
+
+        .ps-task {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin: 0.75rem 0 0;
+            padding: 0.55rem 0.8rem;
+            background: rgba(0, 102, 204, 0.07);
+            border-left: 2px solid var(--accent-blue);
+            border-radius: 4px;
+        }
+
+        .ps-task strong { color: var(--accent-blue-bright); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 1px; }
+
+        .ps-prompt {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0.7rem 0 0.1rem;
+        }
+
+        .ps-prompt .ic { color: var(--accent-blue-bright); flex-shrink: 0; }
+
+        .ps-code {
+            font-family: var(--code-font);
+            font-size: 0.88rem;
+            line-height: 2.1;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.85rem 1rem;
+            margin: 0.6rem 0 0.9rem;
+            max-width: 100%;
+            overflow-x: auto;
+            white-space: pre;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .ps-line { display: block; white-space: pre; }
+        .ps-tok { color: var(--text-main); }
+        .ps-tok-ok { color: #26de81; }
+
+        /* the blank the learner has to produce */
+        .ps-gap {
+            display: inline-block;
+            min-width: 58px;
+            height: 1.05em;
+            vertical-align: -0.15em;
+            border-bottom: 1.5px dashed var(--accent-blue-bright);
+            background: rgba(0, 128, 255, 0.07);
+            border-radius: 2px;
+        }
+
+        /* token bank + tray (faded Parsons) */
+        .ps-bank { display: flex; flex-wrap: wrap; gap: 7px; margin: 0.5rem 0 0.35rem; }
+
+        .ps-bank-tok {
+            font-family: var(--code-font);
+            font-size: 0.85rem;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-main);
+            padding: 6px 11px;
+            cursor: pointer;
+            transition: all 0.12s;
+            touch-action: manipulation;
+        }
+
+        .ps-bank-tok:hover:not(.used) { border-color: var(--accent-blue-bright); background: var(--bg-card-hover); }
+        .ps-bank-tok.used { opacity: 0.25; cursor: default; }
+
+        .ps-tray-tok {
+            font-family: var(--code-font);
+            font-size: 0.85rem;
+            background: rgba(0, 128, 255, 0.14);
+            border: 1px solid var(--accent-blue-bright);
+            border-radius: 5px;
+            color: white;
+            padding: 3px 9px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .ps-caret {
+            display: inline-block;
+            width: 2px;
+            height: 1.05em;
+            vertical-align: -0.15em;
+            background: var(--accent-blue-bright);
+            animation: ps-blink 1s steps(2, start) infinite;
+        }
+
+        @keyframes ps-blink { to { visibility: hidden; } }
+
+        .ps-bank-note { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+
+        .ps-qline { font-size: 0.95rem; color: white; margin: 0.1rem 0 0.7rem; }
+        .ps-qline strong { color: var(--accent-blue-bright); }
+
+        .ps-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.3rem; }
+
+        .ps-opt {
+            font-family: var(--code-font);
+            font-size: 0.88rem;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-main);
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+            touch-action: manipulation;
+        }
+
+        .ps-opt:hover { border-color: var(--accent-blue-bright); background: var(--bg-card-hover); }
+
+        /* feedback */
+        .ps-feedback {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            padding: 0.6rem 0.85rem;
+            border-radius: 6px;
+            margin-top: 0.2rem;
+            border-left: 3px solid var(--border-color);
+            background: rgba(0, 102, 204, 0.08);
+        }
+
+        .ps-feedback { flex-wrap: wrap; }
+        .ps-feedback .ic { flex-shrink: 0; }
+        .ps-feedback > * { min-width: 0; }
+        .ps-feedback code, .ps-feedback-line code {
+            font-family: var(--code-font);
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .ps-feedback.ok { border-left-color: #26de81; color: #26de81; background: rgba(38, 222, 129, 0.1); }
+        .ps-feedback.bad { border-left-color: #e55039; color: #e55039; background: rgba(229, 80, 57, 0.1); }
+
+        .ps-feedback-line {
+            font-size: 0.85rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 4px;
+            margin-top: 0.45rem;
+        }
+
+        .ps-feedback-line.ok { color: #26de81; background: rgba(38, 222, 129, 0.08); }
+        .ps-feedback-line.bad { color: #e55039; background: rgba(229, 80, 57, 0.08); }
+
+        /* token level diff */
+        .ps-diff {
+            margin: 0.4rem 0 0.3rem;
+            padding: 0.5rem 0.7rem;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.82rem;
+        }
+
+        .ps-diff-row { display: flex; gap: 8px; align-items: baseline; }
+        .ps-diff-row + .ps-diff-row { margin-top: 3px; }
+
+        .ps-diff-label {
+            flex-shrink: 0;
+            width: 74px;
+            font-size: 0.66rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+        }
+
+        .ps-diff-row code {
+            font-family: var(--code-font);
+            white-space: pre-wrap;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .ps-diff-ok { color: #26de81; }
+        .ps-diff-missing { color: var(--accent-blue-bright); border-bottom: 1.5px dashed var(--accent-blue-bright); }
+        .ps-diff-extra { color: #e55039; text-decoration: line-through; }
+
+        .ps-hint { font-size: 0.82rem; color: #d4760a; margin-top: 0.4rem; overflow-wrap: anywhere; }
+        .ps-hint code { font-family: var(--code-font); color: #d4760a; }
+
+        /* typing */
+        .ps-prompts { display: flex; flex-direction: column; gap: 9px; }
+
+        .ps-prompt-row { display: flex; align-items: center; gap: 9px; }
+
+        .ps-input-num {
+            flex-shrink: 0;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(0, 102, 204, 0.2);
+            color: var(--accent-blue-bright);
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ps-input-main { flex: 1; min-width: 0; }
+        .ps-input-q { display: block; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 3px; }
+
+        .ps-input {
+            width: 100%;
+            font-family: var(--code-font);
+            font-size: 0.88rem;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-main);
+            padding: 7px 10px;
+        }
+
+        .ps-input:focus { outline: none; border-color: var(--accent-blue-bright); }
+        .ps-input.ps-bad { border-color: #e55039; background: rgba(229, 80, 57, 0.08); }
+        .ps-input.ps-good { border-color: #26de81; background: rgba(38, 222, 129, 0.08); }
+
+        .ps-mark { flex-shrink: 0; font-size: 1rem; }
+        .ps-mark.good { color: #26de81; }
+        .ps-mark.bad { color: #e55039; }
+
+        .ps-revealed {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 3px;
+            font-size: 0.72rem;
+            color: #d4760a;
+        }
+
+        .ps-peek {
+            margin: 0.6rem 0 0;
+            padding: 0.6rem 0.8rem 0.1rem;
+            border: 1px dashed var(--accent-blue-bright);
+            border-radius: 6px;
+            font-size: 0.78rem;
+            color: var(--accent-blue-bright);
+        }
+
+        .ps-peek .ps-code { margin-top: 0.4rem; }
+
+        .ps-done { text-align: center; }
+        .ps-done h3 { font-size: 1.3rem; color: white; margin-bottom: 0.3rem; }
+        .ps-done .ps-code { text-align: left; margin-top: 0.9rem; }
+
         @media (max-width: 640px) {
             .quiz-options { grid-template-columns: 1fr; }
-            .flashcard { height: 320px; }
+            .flashcard-front,
+            .flashcard-back { min-height: 190px; padding: 1.25rem 1.1rem; }
             .study-toolbar { flex-direction: column; align-items: flex-start; }
+
+            /* Pseudocode has to fit a phone: wrap it with a hanging indent so a
+               long line stays readable instead of running off the screen. */
+            .ps-card { max-width: 100%; }
+            .ps-face { padding: 1rem 0.85rem; }
+            .ps-code {
+                font-size: 0.8rem;
+                line-height: 1.95;
+                padding: 0.7rem 0.75rem;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+                overflow-x: hidden;
+            }
+            .ps-line {
+                display: block;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+            }
+            /* true hanging indent: the wrap indent applies to the text after the
+               first line, while the leading spaces of a line are preserved */
+            .ps-line > .ps-tok:first-child, .ps-line > .ps-gap:first-child {
+                display: inline-block;
+                padding-left: 1.4em;
+                text-indent: -1.4em;
+            }
+            .ps-task { font-size: 0.82rem; padding: 0.5rem 0.65rem; }
+            .ps-feedback, .ps-feedback-line, .ps-qline { font-size: 0.85rem; }
+            .ps-bank-tok { padding: 7px 10px; font-size: 0.82rem; }
+            .ps-gap { min-width: 46px; }
+            .ps-count { margin-left: 0; }
+            .ps-diff-row { flex-direction: column; gap: 1px; }
+            .ps-diff-label { width: auto; }
+            .ps-input { font-size: 0.85rem; padding: 8px 9px; }
+            .qz-results h3 { font-size: 1.2rem; }
+            .quiz-question { font-size: 1.02rem; }
+
+            /* keep the action buttons on as few rows as possible on a phone */
+            .quiz-actions { gap: 7px; }
+            .quiz-actions .study-btn { padding: 8px 13px; font-size: 0.82rem; }
+            .quiz-actions .study-btn .ic { width: 0.9em; height: 0.9em; }
         }
     </style>
 </head>
@@ -975,8 +1371,9 @@
             <div id="nav-chapters"></div>
             <div class="nav-label" style="margin-top: 2rem;">Study</div>
             <div id="nav-study">
-                <div class="nav-item" data-target="study-flashcards" onclick="showSection('study-flashcards')">🃏 Flashcards</div>
-                <div class="nav-item" data-target="study-quiz" onclick="showSection('study-quiz')">📝 Quiz</div>
+                <div class="nav-item" data-target="study-flashcards" onclick="showSection('study-flashcards')"><span class="nav-icon" id="nav-icon-flashcards"></span>Flashcards</div>
+                <div class="nav-item" data-target="study-quiz" onclick="showSection('study-quiz')"><span class="nav-icon" id="nav-icon-quiz"></span>Quiz</div>
+                <div class="nav-item" data-target="study-pseudocode" onclick="showSection('study-pseudocode')"><span class="nav-icon" id="nav-icon-pseudocode"></span>Pseudocode Builder</div>
             </div>
             <div class="nav-label" style="margin-top: 2rem;">Settings</div>
             <a class="nav-item" href="admin.html">Admin Panel</a>
@@ -993,6 +1390,17 @@
     <!-- JavaScript -->
     <script src="study.js"></script>
     <script>
+        // Sidebar study icons — single source of truth lives in study.js (inline SVG, no emoji)
+        (function applyStudyIcons() {
+            var icons = window.Study && window.Study.icons;
+            if (!icons) return;
+            [['nav-icon-flashcards', icons.cards], ['nav-icon-quiz', icons.clipboard],
+             ['nav-icon-pseudocode', icons.code]].forEach(function (pair) {
+                var holder = document.getElementById(pair[0]);
+                if (holder) holder.innerHTML = pair[1];
+            });
+        })();
+
         const ESCAPE_ALLOWED = { strong: true, code: true, em: true };
 
         function escapeHtml(str) {

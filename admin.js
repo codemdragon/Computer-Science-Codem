@@ -36,13 +36,14 @@ var state = {
     db: null,
     selectedChapterId: null,
     openUids: {},
-    view: 'chapters'   // 'chapters' | 'flashcards' | 'quiz'
+    view: 'chapters'   // 'chapters' | 'flashcards' | 'quiz' | 'pseudocode'
 };
 
 function ensureStudyArrays() {
     if (!state.db) return;
     if (!Array.isArray(state.db.flashcards)) state.db.flashcards = [];
     if (!Array.isArray(state.db.quiz)) state.db.quiz = [];
+    if (!Array.isArray(state.db.pseudocode)) state.db.pseudocode = [];
 }
 
 var BLOCK_TYPES = [
@@ -212,6 +213,7 @@ function renderChapterList() {
     // Study content nav (Flashcards / Quiz)
     var fcNav = document.getElementById('study-nav-flashcards');
     var qzNav = document.getElementById('study-nav-quiz');
+    var psNav = document.getElementById('study-nav-pseudocode');
     if (fcNav && qzNav) {
         fcNav.classList.toggle('selected', state.view === 'flashcards');
         qzNav.classList.toggle('selected', state.view === 'quiz');
@@ -219,6 +221,11 @@ function renderChapterList() {
             (state.db.flashcards ? state.db.flashcards.length : 0) + ' cards';
         document.getElementById('study-quiz-count').textContent =
             (state.db.quiz ? state.db.quiz.length : 0) + ' questions';
+        if (psNav) {
+            psNav.classList.toggle('selected', state.view === 'pseudocode');
+            document.getElementById('study-ps-count').textContent =
+                (state.db.pseudocode ? state.db.pseudocode.length : 0) + ' snippets';
+        }
     }
 }
 
@@ -520,6 +527,27 @@ function blockForm(b) {
 }
 
 // ---------- Study editors (Flashcards + Quiz) ----------
+// Flashcards have to stay memorisable: one short answer line plus a few bullets.
+// Anything longer belongs on another card (same rule Quizlet decks follow).
+var FC_DEF_MAX = 110;
+var FC_POINT_MAX = 70;
+var FC_POINTS_MAX = 3;
+var FC_ANSWER_MAX = 60;
+
+function flashcardWarnings(card) {
+    var w = [];
+    var def = card.definition || '';
+    if (def.length > FC_DEF_MAX) w.push('Definition is ' + def.length + ' characters — split it into two cards');
+    var pts = Array.isArray(card.points) ? card.points : [];
+    if (pts.length > FC_POINTS_MAX) w.push(pts.length + ' bullets — keep it to 3 or fewer');
+    if (pts.some(function (p) { return String(p).length > FC_POINT_MAX; })) w.push('A bullet is too long — shorten it');
+    if (card.details) w.push('Uses the old "details" field — move it into bullets');
+    (card.questions || []).forEach(function (qa, i) {
+        if ((qa.a || '').length > FC_ANSWER_MAX) w.push('Answer ' + (i + 1) + ' is long — trim it');
+    });
+    return w;
+}
+
 function chapterSelect(chapters, value, onChange) {
     var sel = el('select', '');
     var optAny = document.createElement('option');
@@ -586,8 +614,9 @@ function renderFlashcardsEditor() {
     wrap.appendChild(el('h2', '', 'Flashcards'));
     wrap.appendChild(el('div', 'inline-note',
         'These power the <strong>Flashcards</strong> page on the site (Terms mode = term &rarr; definition; ' +
-        'Questions mode = the Q/A pairs below). <strong>Definition</strong>, <strong>details</strong> and ' +
-        '<strong>example</strong> support &lt;strong&gt; / &lt;code&gt; / &lt;em&gt;.'));
+        'Questions mode = the Q/A pairs below). Cards must stay short: <strong>one answer line</strong> plus ' +
+        'at most <strong>3 bullets</strong> — split anything longer into a second card. ' +
+        'Definition, bullets and example support &lt;strong&gt; / &lt;code&gt; / &lt;em&gt;.'));
 
     var addBtn = el('button', 'primary', '+ New flashcard');
     addBtn.onclick = function () {
@@ -595,6 +624,7 @@ function renderFlashcardsEditor() {
             id: slug('fc-' + Date.now()),
             term: 'New term',
             definition: '',
+            points: [],
             chapter: state.db.chapters.length ? state.db.chapters[0].id : '',
             questions: []
         };
@@ -628,6 +658,7 @@ function renderFlashcardRow(cards, card, i) {
     var badge = el('span', 'badge', esc(card.chapter || '—'));
     var previewEl = el('span', 'brow-preview',
         esc(card.term || '(untitled)') + ' · ' +
+        ((card.points || []).length) + ' bullets · ' +
         ((card.questions || []).length) + ' q');
     var toggle = function () {
         if (state.openUids[uid]) delete state.openUids[uid];
@@ -640,6 +671,15 @@ function renderFlashcardRow(cards, card, i) {
         n.onclick = toggle;
     });
     head.appendChild(badge);
+
+    var warns = flashcardWarnings(card);
+    if (warns.length) {
+        var warnBadge = el('span', 'badge warn', 'Split this card');
+        warnBadge.title = warns.join('\n');
+        warnBadge.style.cursor = 'pointer';
+        warnBadge.onclick = toggle;
+        head.appendChild(warnBadge);
+    }
     head.appendChild(previewEl);
 
     var up = el('button', '', '&uarr;'); up.title = 'Move up'; up.disabled = i === 0;
@@ -688,27 +728,50 @@ function renderFlashcardRow(cards, card, i) {
         form.appendChild(el('label', '', 'Chapter (filter on the site)'));
         form.appendChild(chapterSelect(state.db.chapters, card.chapter, function (v) { card.chapter = v; }));
 
-        form.appendChild(el('label', '', 'Definition (back of card — required)'));
+        form.appendChild(el('label', '', 'Definition (back of card — one short line, required)'));
         var defTa = el('textarea', '');
-        defTa.rows = 3;
+        defTa.rows = 2;
         defTa.value = card.definition || '';
         bindInput(defTa, function () { card.definition = defTa.value; });
         form.appendChild(defTa);
+        form.appendChild(el('div', 'inline-note', 'Keep it to about 100 characters — one idea per card.'));
 
-        form.appendChild(el('label', '', 'Details (optional — shown on the back)'));
-        var detTa = el('textarea', '');
-        detTa.rows = 3;
-        detTa.value = card.details || '';
-        bindInput(detTa, function () { card.details = detTa.value; });
-        form.appendChild(detTa);
+        form.appendChild(el('label', '', 'Bullets (optional — one short bullet per line, 3 max)'));
+        var ptsTa = el('textarea', '');
+        ptsTa.rows = 3;
+        ptsTa.style.fontFamily = "var(--code-font)";
+        ptsTa.value = (Array.isArray(card.points) ? card.points : []).join('\n');
+        bindInput(ptsTa, function () {
+            card.points = ptsTa.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        });
+        form.appendChild(ptsTa);
 
-        form.appendChild(el('label', '', 'Example (optional — shown on the back, keeps line breaks)'));
+        form.appendChild(el('label', '', 'Example (optional — one line on the back)'));
         var exTa = el('textarea', '');
-        exTa.rows = 3;
+        exTa.rows = 2;
         exTa.style.fontFamily = "var(--code-font)";
         exTa.value = card.example || '';
         bindInput(exTa, function () { card.example = exTa.value; });
         form.appendChild(exTa);
+
+        if (card.details) {
+            form.appendChild(el('label', '', 'Old "details" text (move it into bullets)'));
+            var detTa = el('textarea', '');
+            detTa.rows = 2;
+            detTa.value = card.details || '';
+            bindInput(detTa, function () { card.details = detTa.value; });
+            form.appendChild(detTa);
+            var mergeBtn = el('button', '', 'Move into bullets');
+            mergeBtn.style.marginTop = '6px';
+            mergeBtn.onclick = function () {
+                var add = String(card.details || '').split(/\s*(?:\n|\u2022)\s*/)
+                    .map(function (s) { return s.trim(); }).filter(Boolean);
+                card.points = (Array.isArray(card.points) ? card.points : []).concat(add).slice(0, FC_POINTS_MAX);
+                delete card.details;
+                renderAll();
+            };
+            form.appendChild(mergeBtn);
+        }
 
         var sub = el('div', 'subblocks');
         sub.appendChild(el('label', '', 'Questions (flashcard Q/A practice + question mode)'));
@@ -729,7 +792,8 @@ function renderQuizEditor() {
     wrap.appendChild(el('h2', '', 'Quiz Questions'));
     wrap.appendChild(el('div', 'inline-note',
         'These power the <strong>Quiz</strong> page (multiple choice + explanations, and the Speed Round). ' +
-        'Mark the correct option with the radio button.'));
+        'Mark the correct option with the radio button. Keep explanations to one short line — ' +
+        'they sit under the question, not on a flashcard.'));
 
     var addBtn = el('button', 'primary', '+ New question');
     addBtn.onclick = function () {
@@ -864,6 +928,279 @@ function renderQuizRow(questions, q, i) {
     return row;
 }
 
+// ---------- Pseudocode Builder editor ----------
+// One entry per line of pseudocode: the code, the English task, and which
+// tokens are blanked in the keyword stages.
+var PS_PUNCT = ['(', ')', '[', ']', '{', '}', '.', ',', ':', '^'];
+
+function pseudoTokenize(line) {
+    var t = String(line == null ? '' : line).trim();
+    PS_PUNCT.forEach(function (ch) { t = t.split(ch).join(' ' + ch + ' '); });
+    return t.split(/\s+/).filter(function (x) { return x !== ''; });
+}
+
+function pseudoWarnings(snippet) {
+    var w = [];
+    var lines = Array.isArray(snippet.lines) ? snippet.lines : [];
+    if (!snippet.task) w.push('Add the task — it is where the names are given to the student');
+    if (lines.length < 2) w.push('A snippet needs at least 2 lines');
+    var drilled = 0;
+    lines.forEach(function (ln, i) {
+        var toks = pseudoTokenize(ln.code);
+        if (!toks.length) { w.push('Line ' + (i + 1) + ' is empty'); return; }
+        if (!ln.q) w.push('Line ' + (i + 1) + ' has no prompt');
+        (ln.drill || []).forEach(function (d) {
+            drilled++;
+            if (d >= toks.length) w.push('Line ' + (i + 1) + ' blanks token ' + d + ' which does not exist');
+            else if (/^(string|integer|real|boolean|char)$/i.test(toks[d])) {
+                w.push('Line ' + (i + 1) + ': do not blank the datatype name "' + toks[d] + '"');
+            }
+        });
+    });
+    if (drilled < 4) w.push('Only ' + drilled + ' keyword blank(s) — blank a few more syntax tokens');
+    if ((snippet.distractors || []).length < 6) {
+        w.push('Add at least 6 decoy tokens (e.g. VAR, END, =, :=) for the multiple choice options');
+    }
+    return w;
+}
+
+function pseudoPlan(snippet) {
+    var lines = Array.isArray(snippet.lines) ? snippet.lines : [];
+    var drilled = lines.reduce(function (n, ln) { return n + (ln.drill || []).length; }, 0);
+    return 'Stages: keywords (' + drilled + ' questions) \u2192 whole snippet (same tokens) \u2192 token bank (' +
+        lines.length + ' lines) \u2192 type lines (' + lines.length + ') \u2192 write it from memory';
+}
+
+function renderPseudoEditor() {
+    var holder = document.getElementById('chapter-editor');
+    holder.innerHTML = '';
+    ensureStudyArrays();
+
+    var wrap = el('div', 'editor-card');
+    wrap.appendChild(el('h2', '', 'Pseudocode Builder (UDD)'));
+    wrap.appendChild(el('div', 'inline-note',
+        'Powers the <strong>Pseudocode Builder</strong> game. Give each line the <strong>code</strong> and an ' +
+        '<strong>English task</strong> — the task is where the student gets the names (MyDay, MyPtr\u2026), ' +
+        'so the syntax has to come from them. Tick which tokens are <strong>blanked</strong> in the keyword ' +
+        'stages (keywords and punctuation only, never the datatype name). The game then runs: keywords \u2192 ' +
+        'whole snippet \u2192 token bank (with decoys) \u2192 type each line \u2192 write it from memory.'));
+
+    var addBtn = el('button', 'primary', '+ New snippet');
+    addBtn.onclick = function () {
+        var s = {
+            id: slug('ps-' + Date.now()),
+            title: 'New snippet',
+            intro: '',
+            chapter: state.db.chapters.length ? state.db.chapters[0].id : '',
+            task: 'Describe what has to be written, including every name.',
+            distractors: ['VAR', 'DEFINE', 'STRUCT', '=', '<-', ':='],
+            lines: [{ code: 'TYPE MyType = (A,B,C)', q: 'Declare an enumerated type MyType with the values A, B and C.', drill: [0] }]
+        };
+        ensureUid(s);
+        state.db.pseudocode.push(s);
+        state.openUids[s._uid] = true;
+        renderAll();
+    };
+    wrap.appendChild(addBtn);
+    wrap.appendChild(el('div', '', ''));
+
+    if (!state.db.pseudocode.length) {
+        wrap.appendChild(el('div', 'empty-chapter', 'No pseudocode snippets yet — create the first one.'));
+    }
+
+    var list = el('div', 'blist');
+    state.db.pseudocode.forEach(function (s, i) {
+        list.appendChild(renderPseudoRow(state.db.pseudocode, s, i));
+    });
+    wrap.appendChild(list);
+    holder.appendChild(wrap);
+}
+
+function renderPseudoRow(snippets, snippet, i) {
+    ensureUid(snippet);
+    var uid = snippet._uid;
+    var isOpen = !!state.openUids[uid];
+    var lines = Array.isArray(snippet.lines) ? snippet.lines : [];
+    var drilled = lines.reduce(function (n, ln) { return n + (ln.drill || []).length; }, 0);
+
+    var row = el('div', 'brow');
+    var head = el('div', 'brow-head');
+    var badge = el('span', 'badge', esc(snippet.chapter || '\u2014'));
+    var previewEl = el('span', 'brow-preview',
+        esc(snippet.title || '(untitled)') + ' \u00b7 ' + lines.length + ' lines \u00b7 ' + drilled + ' keyword blanks');
+    var toggle = function () {
+        if (state.openUids[uid]) delete state.openUids[uid];
+        else state.openUids[uid] = true;
+        renderAll();
+    };
+    [badge, previewEl].forEach(function (n) {
+        n.style.cursor = 'pointer';
+        n.title = isOpen ? 'Collapse editor' : 'Open editor';
+        n.onclick = toggle;
+    });
+    head.appendChild(badge);
+
+    var warns = pseudoWarnings(snippet);
+    if (warns.length) {
+        var warnBadge = el('span', 'badge warn', 'Check content');
+        warnBadge.title = warns.join('\n');
+        warnBadge.style.cursor = 'pointer';
+        warnBadge.onclick = toggle;
+        head.appendChild(warnBadge);
+    }
+    head.appendChild(previewEl);
+
+    var up = el('button', '', '&uarr;'); up.title = 'Move up'; up.disabled = i === 0;
+    var down = el('button', '', '&darr;'); down.title = 'Move down'; down.disabled = i === snippets.length - 1;
+    var edit = el('button', isOpen ? 'primary' : '', isOpen ? 'Done' : 'Edit');
+    var del = el('button', 'danger', '&times;'); del.title = 'Delete snippet';
+    up.onclick = function (e) { e.stopPropagation(); swap(snippets, i, i - 1); };
+    down.onclick = function (e) { e.stopPropagation(); swap(snippets, i, i + 1); };
+    edit.onclick = function (e) { e.stopPropagation(); toggle(); };
+    del.onclick = function (e) {
+        e.stopPropagation();
+        if (confirm('Delete snippet "' + (snippet.title || 'untitled') + '"?')) {
+            snippets.splice(i, 1);
+            delete state.openUids[uid];
+            renderAll();
+        }
+    };
+    head.appendChild(up); head.appendChild(down); head.appendChild(edit); head.appendChild(del);
+    row.appendChild(head);
+
+    if (!isOpen) return row;
+
+    var form = el('div', 'brow-form');
+
+    var row1 = el('div', 'field-row');
+    var titleWrap = el('div');
+    titleWrap.appendChild(el('label', '', 'Title (the chip in the game)'));
+    var titleIn = el('input', '');
+    titleIn.type = 'text';
+    titleIn.value = snippet.title || '';
+    bindInput(titleIn, function () { snippet.title = titleIn.value; });
+    titleWrap.appendChild(titleIn);
+
+    var idWrap = el('div');
+    idWrap.appendChild(el('label', '', 'ID (unique, auto-slugs on save)'));
+    var idIn = el('input', '');
+    idIn.type = 'text';
+    idIn.value = snippet.id || '';
+    idIn.addEventListener('change', function () {
+        snippet.id = slug(idIn.value);
+        idIn.value = snippet.id;
+    });
+    idWrap.appendChild(idIn);
+    row1.appendChild(titleWrap); row1.appendChild(idWrap);
+    form.appendChild(row1);
+
+    form.appendChild(el('label', '', 'Chapter (usually data-types)'));
+    form.appendChild(chapterSelect(state.db.chapters, snippet.chapter, function (v) { snippet.chapter = v; }));
+
+    form.appendChild(el('label', '', 'Intro (one line above the game)'));
+    var introTa = el('textarea', '');
+    introTa.rows = 2;
+    introTa.value = snippet.intro || '';
+    bindInput(introTa, function () { snippet.intro = introTa.value; });
+    form.appendChild(introTa);
+
+    form.appendChild(el('label', '', 'Task — every name the student needs, but no syntax'));
+    var taskTa = el('textarea', '');
+    taskTa.rows = 2;
+    taskTa.value = snippet.task || '';
+    bindInput(taskTa, function () { snippet.task = taskTa.value; });
+    form.appendChild(taskTa);
+
+    form.appendChild(el('label', '', 'Decoy tokens (comma separated) — the wrong options and bank decoys'));
+    var disTa = el('input', '');
+    disTa.type = 'text';
+    disTa.style.fontFamily = 'var(--code-font)';
+    disTa.value = (snippet.distractors || []).join(', ');
+    bindInput(disTa, function () {
+        snippet.distractors = disTa.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    });
+    form.appendChild(disTa);
+
+    var sub = el('div', 'subblocks');
+    sub.appendChild(el('div', 'mini-label', 'Lines — code, task line and which tokens get blanked'));
+    snippet.lines = lines;
+
+    lines.forEach(function (ln, li) {
+        var block = el('div', 'ps-blank-editor');
+        var toks = pseudoTokenize(ln.code);
+
+        var head3 = el('div', 'ps-blank-head');
+        head3.appendChild(el('span', 'mini-label', 'Line ' + (li + 1) + ' \u2014 ' + toks.length + ' tokens'));
+        var acts = el('div', '');
+        var upL = el('button', '', '&uarr;'); upL.disabled = li === 0; upL.title = 'Move line up';
+        var downL = el('button', '', '&darr;'); downL.disabled = li === lines.length - 1; downL.title = 'Move line down';
+        var rm = el('button', 'danger', 'Remove');
+        upL.onclick = function () { var t = lines[li - 1]; lines[li - 1] = lines[li]; lines[li] = t; renderAll(); };
+        downL.onclick = function () { var t = lines[li + 1]; lines[li + 1] = lines[li]; lines[li] = t; renderAll(); };
+        rm.onclick = function () { lines.splice(li, 1); renderAll(); };
+        acts.appendChild(upL); acts.appendChild(downL); acts.appendChild(rm);
+        head3.appendChild(acts);
+        block.appendChild(head3);
+
+        block.appendChild(el('label', '', 'Code (indentation is kept)'));
+        var codeIn = el('input', '');
+        codeIn.type = 'text';
+        codeIn.style.fontFamily = 'var(--code-font)';
+        codeIn.value = ln.code || '';
+        codeIn.addEventListener('input', function () { ln.code = codeIn.value; });
+        codeIn.addEventListener('change', function () {
+            ln.code = codeIn.value;
+            ln.drill = (ln.drill || []).filter(function (d) { return d < pseudoTokenize(ln.code).length; });
+            renderAll();   // token chips changed
+        });
+        block.appendChild(codeIn);
+
+        block.appendChild(el('label', '', 'Task for this line (what it has to do, with the names)'));
+        var qIn = el('input', '');
+        qIn.type = 'text';
+        qIn.value = ln.q || '';
+        bindInput(qIn, function () { ln.q = qIn.value; });
+        block.appendChild(qIn);
+
+        block.appendChild(el('label', '', 'Blank these tokens in the keyword stages'));
+        var chipRow = el('div', 'ps-token-chips');
+        toks.forEach(function (tk, ti) {
+            var on = (ln.drill || []).indexOf(ti) !== -1;
+            var chip = el('button', on ? 'primary' : '', esc(tk));
+            chip.type = 'button';
+            chip.style.fontFamily = 'var(--code-font)';
+            chip.style.fontSize = '.75rem';
+            chip.style.padding = '2px 8px';
+            chip.title = on ? 'Blanked in the keyword stages' : 'Shown to the student';
+            chip.onclick = function () {
+                ln.drill = ln.drill || [];
+                var at = ln.drill.indexOf(ti);
+                if (at === -1) ln.drill.push(ti);
+                else ln.drill.splice(at, 1);
+                ln.drill.sort(function (a, b) { return a - b; });
+                renderAll();
+            };
+            chipRow.appendChild(chip);
+        });
+        block.appendChild(chipRow);
+
+        sub.appendChild(block);
+    });
+
+    var addLine = el('button', '', '+ Add line');
+    addLine.onclick = function () {
+        lines.push({ code: '', q: '', drill: [] });
+        renderAll();
+    };
+    sub.appendChild(addLine);
+    form.appendChild(sub);
+
+    form.appendChild(el('div', 'inline-note', pseudoPlan(snippet)));
+
+    row.appendChild(form);
+    return row;
+}
+
 // ---------- Save ----------
 async function saveToGitHub() {
     if (!state.settings || !state.db) return;
@@ -915,6 +1252,8 @@ function renderAll() {
         renderFlashcardsEditor();
     } else if (state.view === 'quiz') {
         renderQuizEditor();
+    } else if (state.view === 'pseudocode') {
+        renderPseudoEditor();
     } else {
         renderChapterEditor();
     }
@@ -932,6 +1271,7 @@ function bindUI() {
 
     document.getElementById('study-nav-flashcards').onclick = function () { setView('flashcards'); };
     document.getElementById('study-nav-quiz').onclick = function () { setView('quiz'); };
+    document.getElementById('study-nav-pseudocode').onclick = function () { setView('pseudocode'); };
 
     document.getElementById('btn-settings').onclick = function () {
         var ls = document.getElementById('login-screen');
