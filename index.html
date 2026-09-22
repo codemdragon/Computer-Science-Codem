@@ -646,6 +646,7 @@
            content: no inner scrolling and no wall-of-text cards. */
         .flashcard-inner {
             display: grid;
+            grid-template-columns: minmax(0, 1fr);   /* never wider than the screen */
             width: 100%;
             transition: transform 0.6s;
             transform-style: preserve-3d;
@@ -656,6 +657,7 @@
         .flashcard-front,
         .flashcard-back {
             grid-area: 1 / 1;
+            min-width: 0;
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
             display: flex;
@@ -1008,11 +1010,12 @@
         /* --- Pseudocode Builder (UDD mini game) --- */
         .ps-snippets { margin-bottom: 0.4rem; }
 
-        .ps-card { cursor: default; max-width: 760px; }
+        .ps-card { cursor: default; max-width: min(760px, 100%); }
         .ps-card .flashcard-inner { transform: none; }
 
         .ps-face {
             grid-area: 1 / 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
             padding: 1.35rem 1.4rem;
@@ -1079,6 +1082,7 @@
             border-radius: 6px;
             padding: 0.85rem 1rem;
             margin: 0.6rem 0 0.9rem;
+            max-width: 100%;
             overflow-x: auto;
             white-space: pre;
             -webkit-overflow-scrolling: touch;
@@ -1176,8 +1180,14 @@
             background: rgba(0, 102, 204, 0.08);
         }
 
+        .ps-feedback { flex-wrap: wrap; }
         .ps-feedback .ic { flex-shrink: 0; }
-        .ps-feedback code, .ps-feedback-line code { font-family: var(--code-font); }
+        .ps-feedback > * { min-width: 0; }
+        .ps-feedback code, .ps-feedback-line code {
+            font-family: var(--code-font);
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         .ps-feedback.ok { border-left-color: #26de81; color: #26de81; background: rgba(38, 222, 129, 0.1); }
         .ps-feedback.bad { border-left-color: #e55039; color: #e55039; background: rgba(229, 80, 57, 0.1); }
 
@@ -1213,12 +1223,18 @@
             color: var(--text-muted);
         }
 
-        .ps-diff-row code { font-family: var(--code-font); white-space: pre-wrap; word-break: break-word; }
+        .ps-diff-row code {
+            font-family: var(--code-font);
+            white-space: pre-wrap;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         .ps-diff-ok { color: #26de81; }
         .ps-diff-missing { color: var(--accent-blue-bright); border-bottom: 1.5px dashed var(--accent-blue-bright); }
         .ps-diff-extra { color: #e55039; text-decoration: line-through; }
 
-        .ps-hint { font-size: 0.82rem; color: #d4760a; margin-top: 0.4rem; }
+        .ps-hint { font-size: 0.82rem; color: #d4760a; margin-top: 0.4rem; overflow-wrap: anywhere; }
         .ps-hint code { font-family: var(--code-font); color: #d4760a; }
 
         /* typing */
@@ -1291,6 +1307,46 @@
             .flashcard-front,
             .flashcard-back { min-height: 190px; padding: 1.25rem 1.1rem; }
             .study-toolbar { flex-direction: column; align-items: flex-start; }
+
+            /* Pseudocode has to fit a phone: wrap it with a hanging indent so a
+               long line stays readable instead of running off the screen. */
+            .ps-card { max-width: 100%; }
+            .ps-face { padding: 1rem 0.85rem; }
+            .ps-code {
+                font-size: 0.8rem;
+                line-height: 1.95;
+                padding: 0.7rem 0.75rem;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+                overflow-x: hidden;
+            }
+            .ps-line {
+                display: block;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+            }
+            /* true hanging indent: the wrap indent applies to the text after the
+               first line, while the leading spaces of a line are preserved */
+            .ps-line > .ps-tok:first-child, .ps-line > .ps-gap:first-child {
+                display: inline-block;
+                padding-left: 1.4em;
+                text-indent: -1.4em;
+            }
+            .ps-task { font-size: 0.82rem; padding: 0.5rem 0.65rem; }
+            .ps-feedback, .ps-feedback-line, .ps-qline { font-size: 0.85rem; }
+            .ps-bank-tok { padding: 7px 10px; font-size: 0.82rem; }
+            .ps-gap { min-width: 46px; }
+            .ps-count { margin-left: 0; }
+            .ps-diff-row { flex-direction: column; gap: 1px; }
+            .ps-diff-label { width: auto; }
+            .ps-input { font-size: 0.85rem; padding: 8px 9px; }
+            .qz-results h3 { font-size: 1.2rem; }
+            .quiz-question { font-size: 1.02rem; }
+
+            /* keep the action buttons on as few rows as possible on a phone */
+            .quiz-actions { gap: 7px; }
+            .quiz-actions .study-btn { padding: 8px 13px; font-size: 0.82rem; }
+            .quiz-actions .study-btn .ic { width: 0.9em; height: 0.9em; }
         }
     </style>
 </head>

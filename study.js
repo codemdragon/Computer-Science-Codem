@@ -439,6 +439,32 @@ window.Study = (function () {
         return m ? m[0] : '';
     }
 
+    // Tokenize while keeping the original separators, so rendered pseudocode keeps
+    // its real spacing ((Mon,Tue,Wed), MyDay : Day, MyPtr^) instead of " ( Mon , Tue".
+    function psScan(line) {
+        var PUNCT = PS_PUNCT.join('');
+        var out = [];
+        var pending = '';
+        var i = 0;
+        var str = String(line == null ? '' : line);
+        while (i < str.length) {
+            var ch = str[i];
+            if (PUNCT.indexOf(ch) !== -1) {
+                out.push({ tok: ch, sep: pending });
+                pending = '';
+                i++;
+                continue;
+            }
+            if (/\s/.test(ch)) { pending += ch; i++; continue; }
+            var j = i;
+            while (j < str.length && !/\s/.test(str[j]) && PUNCT.indexOf(str[j]) === -1) j++;
+            out.push({ tok: str.slice(i, j), sep: pending });
+            pending = '';
+            i = j;
+        }
+        return out;
+    }
+
     function psTokensEqual(a, b) {
         if (a.length !== b.length) return false;
         for (var i = 0; i < a.length; i++) {
@@ -540,43 +566,47 @@ window.Study = (function () {
         var out = [];
         psLines(snippet).forEach(function (ln, li) {
             if (opts.upto !== undefined && li > opts.upto) return;
-            var indent = esc(psIndent(ln.code));
-            var toks = psTokenize(ln.code);
+            var scan = psScan(ln.code);
             var body;
-            if (opts.trayLine === li) {
+            if (opts.trayLine === li && !(filled[li] && Object.keys(filled[li]).length)) {
                 body = (opts.tray || []).map(function (t, ti) {
                     return '<button type="button" class="ps-tray-tok" data-tray="' + ti + '">' + esc(t) + '</button>';
                 }).join(' ') + '<span class="ps-caret"></span>';
             } else {
-                body = toks.map(function (tk, ti) {
-                    if ((filled[li] || {})[ti]) return '<span class="ps-tok ps-tok-ok">' + esc(tk) + '</span>';
-                    if ((gaps[li] || []).indexOf(ti) !== -1) return '<span class="ps-gap"></span>';
-                    return '<span class="ps-tok">' + esc(tk) + '</span>';
-                }).join(' ');
+                body = scan.map(function (sc, ti) {
+                    var sep = esc(sc.sep);
+                    if ((filled[li] || {})[ti]) return sep + '<span class="ps-tok ps-tok-ok">' + esc(sc.tok) + '</span>';
+                    if ((gaps[li] || []).indexOf(ti) !== -1) return sep + '<span class="ps-gap"></span>';
+                    return sep + '<span class="ps-tok">' + esc(sc.tok) + '</span>';
+                }).join('');
             }
-            out.push('<span class="ps-line">' + indent + body + '</span>');
+            out.push('<span class="ps-line">' + body + '</span>');
         });
         return '<pre class="ps-code">' + out.join('') + '</pre>';
     }
 
-    function psDiffHtml(expected, got) {
+    // `expected` is the token list; `scan` keeps the original spacing for the model row
+    function psDiffHtml(expected, got, scan, typedRaw) {
         var d = psDiff(expected, got);
-        var expectRow = d.rows.filter(function (r) { return r.t !== 'extra'; }).map(function (r) {
-            return r.t === 'ok'
-                ? '<span class="ps-diff-ok">' + esc(r.exp) + '</span>'
-                : '<span class="ps-diff-missing">' + esc(r.exp) + '</span>';
-        }).join(' ');
-        var gotRow = d.rows.filter(function (r) { return r.t !== 'missing'; }).map(function (r) {
-            return r.t === 'ok'
-                ? '<span class="ps-diff-ok">' + esc(r.got) + '</span>'
-                : '<span class="ps-diff-extra">' + esc(r.got) + '</span>';
-        }).join(' ');
+        var k = 0;
+        var expectRow = d.rows.map(function (r) {
+            if (r.t === 'extra') return '';
+            var sc = scan && scan[k] ? scan[k] : { tok: r.exp, sep: ' ' };
+            k++;
+            var sep = sc === undefined ? '' : (scan[k - 1] ? scan[k - 1].sep : ' ');
+            return esc(sep || '') + '<span class="' + (r.t === 'ok' ? 'ps-diff-ok' : 'ps-diff-missing') + '">' +
+                esc(sc.tok) + '</span>';
+        }).join('');
+        var extra = d.rows.filter(function (r) { return r.t === 'extra'; }).length;
+        var gotRow = esc(String(typedRaw || '').replace(/\s+$/, '')) || '&nbsp;';
         return {
             ok: d.ok,
             html: '<div class="ps-diff">' +
-                '<div class="ps-diff-row"><span class="ps-diff-label">You wrote</span><code>' + (gotRow || '&nbsp;') + '</code></div>' +
+                '<div class="ps-diff-row"><span class="ps-diff-label">You wrote</span><code class="ps-diff-you">' +
+                    gotRow + '</code></div>' +
                 '<div class="ps-diff-row"><span class="ps-diff-label">Should be</span><code>' + expectRow + '</code></div>' +
-                '</div>' + '<div class="ps-hint">' + esc(psHintFor(expected, got)) + '</div>'
+                '</div>' + '<div class="ps-hint">' + esc(psHintFor(expected, got)) +
+                (extra ? ' (' + extra + ' extra token' + (extra === 1 ? '' : 's') + ')' : '') + '</div>'
         };
     }
 
@@ -678,7 +708,7 @@ window.Study = (function () {
                     return '<button type="button" class="ps-opt" data-opt="' + esc(o) + '">' + esc(o) + '</button>';
                 }).join('') + '</div>';
         } else {
-            var wholeLine = allToks[current.line].join(' ');
+            var wholeLine = String(psLines(s)[current.line].code || '').trim();
             var nextLabel = r.stage === 0
                 ? (r.lineIdx + 1 >= psDrillLines(s).length ? 'Next stage ' : 'Next line ')
                 : (r.qIdx + 1 >= psDrillQueue(s).length ? 'Next stage ' : 'Next blank ');
@@ -719,11 +749,17 @@ window.Study = (function () {
 
         var feedback = '';
         if (r.bankChecked) {
-            var diff = psDiffHtml(expected, r.tray);
+            var diff = psDiffHtml(expected, r.tray, psScan(line.code), r.tray.join(' '));
             feedback = diff.ok
                 ? '<div class="ps-feedback ok">' + ICONS.check + ' Line ' + (r.lineIdx + 1) + ' built correctly.</div>'
                 : '<div class="ps-feedback bad">' + ICONS.cross + ' Not the right order yet.</div>' + diff.html;
         }
+
+        // the line being rebuilt must never be visible, even if an earlier stage filled it
+        var filledForCode = {};
+        Object.keys(r.filled || {}).forEach(function (k) {
+            if (parseInt(k, 10) !== r.lineIdx) filledForCode[k] = r.filled[k];
+        });
 
         var actions = r.tray.length
             ? '<button type="button" class="study-btn primary" id="ps-check-line">' + ICONS.check + ' Check line</button>'
@@ -732,7 +768,7 @@ window.Study = (function () {
         if (r.bankChecked) actions += '<button type="button" class="study-btn" id="ps-show-line">' + ICONS.bulb + ' Show line</button>';
 
         return psStageBar(s, r) + psTaskHtml(s) +
-            psCodeHtml(s, { upto: r.lineIdx, trayLine: r.lineIdx, tray: r.tray, filled: r.filled }) +
+            psCodeHtml(s, { upto: r.lineIdx, trayLine: r.lineIdx, tray: r.tray, filled: filledForCode }) +
             '<div class="ps-qline"><strong>Line ' + (r.lineIdx + 1) + ' of ' + psLines(s).length + ': </strong>' +
                 safeHtml(line.q || '') + '</div>' +
             '<div class="ps-bank">' + bankHtml + '</div>' +
@@ -742,6 +778,20 @@ window.Study = (function () {
     }
 
     // ---- stages 3, 4, 5: typing ----
+    // Reset the typing slate whenever the learner (re)starts the typing stages
+    function psStartTypingPhase(stage) {
+        var r = ps.run;
+        r.stage = stage;
+        r.lineIdx = 0;
+        r.values = {};
+        r.results = {};
+        r.typedLines = {};
+        r.revealed = {};
+        r.typeFeedback = '';
+        r.hintShown = false;
+        r.peeking = false;
+    }
+
     function psTypeTargets(s, r) {
         if (r.stage === 3) return [r.lineIdx];
         if (r.stage === 4) return psLines(s).map(function (_, i) { return i; });
@@ -943,7 +993,12 @@ window.Study = (function () {
         });
         on('ps-finish', function () {
             var bad = psTypeTargets(s, r).filter(function (li) { return r.results[li] !== true; });
-            if (bad.length) { r.wrong = bad; r.stage = 5; psRenderStage(); }
+            if (bad.length) {
+                r.wrong = bad.slice();
+                psStartTypingPhase(5);
+                r.wrong = bad.slice();
+                psRenderStage();
+            }
             else { r.done = true; psRenderStage(); }
         });
 
@@ -1002,12 +1057,8 @@ window.Study = (function () {
 
     function psNextBankLine(s, r) {
         if (r.lineIdx + 1 >= psLines(s).length) {
-            r.stage = 3;
-            r.lineIdx = 0;
-            r.values = {};
-            r.results = {};
-            r.typedLines = {};
             r.filled = {};
+            psStartTypingPhase(3);
         } else {
             r.lineIdx++;
             r.bank = [];
@@ -1029,16 +1080,17 @@ window.Study = (function () {
         var allOk = true;
         r.attempts++;
         targets.forEach(function (li) {
-            var expected = psTokenize(psLines(s)[li].code);
+            var lineCode = psLines(s)[li].code;
+            var expected = psTokenize(lineCode);
             var got = psTokenize(r.values[li] || '');
-            var diff = psDiffHtml(expected, got);
+            var diff = psDiffHtml(expected, got, psScan(lineCode), r.values[li] || '');
             var ok = diff.ok;      // having peeked at an answer never counts as typing it
             r.results[li] = ok;
             if (ok) {
                 r.typedLines[li] = expected;
                 if (r.stage !== 3) {
                     feedbackParts.unshift('<div class="ps-feedback-line ok">' + ICONS.check + ' Line ' + (li + 1) +
-                        ': <code>' + esc(expected.join(' ')) + '</code></div>');
+                        ': <code>' + esc(String(lineCode).trim()) + '</code></div>');
                 }
             } else {
                 allOk = false;
@@ -1052,13 +1104,7 @@ window.Study = (function () {
         if (allOk && r.stage === 3) {
             r.lineIdx++;
             r.hintShown = false;
-            if (r.lineIdx >= psLines(s).length) {
-                r.stage = 4;
-                r.lineIdx = 0;
-                r.values = {};
-                r.results = {};
-                r.typeFeedback = '';
-            }
+            if (r.lineIdx >= psLines(s).length) psStartTypingPhase(4);
         }
         psRenderStage();
     }
@@ -1066,7 +1112,7 @@ window.Study = (function () {
     function psShowAnswer(s, r) {
         var targets = psTypeTargets(s, r);
         targets.forEach(function (li) {
-            r.values[li] = psTokenize(psLines(s)[li].code).join(' ');
+            r.values[li] = String(psLines(s)[li].code || '').trim();
             r.revealed[li] = true;
             r.results[li] = true;
             r.typedLines[li] = psTokenize(psLines(s)[li].code);
@@ -1090,8 +1136,9 @@ window.Study = (function () {
             r.typeFeedback = '';
             r.hintShown = false;
             if (r.stage === 2) { r.lineIdx = 0; r.bank = []; r.tray = []; }
-            if (r.stage >= 3) { r.lineIdx = 0; r.values = {}; r.results = {}; }
-            if (r.stage === 4) { r.values = {}; r.results = {}; r.typeFeedback = ''; }
+            if (r.stage === 3) { psStartTypingPhase(3); return psRenderStage(); }
+            if (r.stage === 4) { psStartTypingPhase(4); return psRenderStage(); }
+            if (r.stage === 5) { psStartTypingPhase(5); return psRenderStage(); }
         }
         psRenderStage();
     }
