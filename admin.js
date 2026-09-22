@@ -35,8 +35,15 @@ var state = {
     settings: null,
     db: null,
     selectedChapterId: null,
-    openUids: {}
+    openUids: {},
+    view: 'chapters'   // 'chapters' | 'flashcards' | 'quiz'
 };
+
+function ensureStudyArrays() {
+    if (!state.db) return;
+    if (!Array.isArray(state.db.flashcards)) state.db.flashcards = [];
+    if (!Array.isArray(state.db.quiz)) state.db.quiz = [];
+}
 
 var BLOCK_TYPES = [
     { type: 'p',        label: 'Paragraph' },
@@ -158,8 +165,7 @@ function showLoginFirstTime() {
 function showApp() {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-screen').classList.remove('hidden');
-    renderChapterList();
-    renderChapterEditor();
+    renderAll();
 }
 
 function setStatus(cls, text) {
@@ -173,7 +179,7 @@ function renderChapterList() {
     var holder = document.getElementById('chapter-list');
     holder.innerHTML = '';
     state.db.chapters.forEach(function (ch, i) {
-        var item = el('div', 'chapter-item' + (ch.id === state.selectedChapterId ? ' selected' : ''));
+        var item = el('div', 'chapter-item' + (ch.id === state.selectedChapterId && state.view === 'chapters' ? ' selected' : ''));
         item.appendChild(el('div', 'ci-title', esc(ch.title)));
         item.appendChild(el('div', 'ci-meta', esc(ch.id + (ch.pdf ? ' · ' + ch.pdf : ''))));
         var acts = el('div', 'ci-actions');
@@ -197,10 +203,29 @@ function renderChapterList() {
         item.appendChild(acts);
         item.onclick = function () {
             state.selectedChapterId = ch.id;
+            state.view = 'chapters';
             renderAll();
         };
         holder.appendChild(item);
     });
+
+    // Study content nav (Flashcards / Quiz)
+    var fcNav = document.getElementById('study-nav-flashcards');
+    var qzNav = document.getElementById('study-nav-quiz');
+    if (fcNav && qzNav) {
+        fcNav.classList.toggle('selected', state.view === 'flashcards');
+        qzNav.classList.toggle('selected', state.view === 'quiz');
+        document.getElementById('study-fc-count').textContent =
+            (state.db.flashcards ? state.db.flashcards.length : 0) + ' cards';
+        document.getElementById('study-quiz-count').textContent =
+            (state.db.quiz ? state.db.quiz.length : 0) + ' questions';
+    }
+}
+
+function setView(view) {
+    state.view = view;
+    state.openUids = {};
+    renderAll();
 }
 
 function moveChapter(i, dir) {
@@ -494,6 +519,351 @@ function blockForm(b) {
     return form;
 }
 
+// ---------- Study editors (Flashcards + Quiz) ----------
+function chapterSelect(chapters, value, onChange) {
+    var sel = el('select', '');
+    var optAny = document.createElement('option');
+    optAny.value = '';
+    optAny.textContent = '— no chapter —';
+    sel.appendChild(optAny);
+    chapters.forEach(function (ch) {
+        var opt = document.createElement('option');
+        opt.value = ch.id;
+        opt.textContent = ch.title;
+        sel.appendChild(opt);
+    });
+    sel.value = value || '';
+    sel.addEventListener('change', function () { onChange(sel.value); });
+    return sel;
+}
+
+function fcQuestionRows(card, holder) {
+    (card.questions || (card.questions = [])).forEach(function (qa, i) {
+        ensureUid(qa);
+        var row = el('div', 'qa-row');
+        row.appendChild(el('div', 'qa-num', String(i + 1)));
+
+        var fields = el('div', 'qa-fields');
+        fields.appendChild(el('label', '', 'Question ' + (i + 1)));
+        var qTa = el('textarea', '');
+        qTa.rows = 2;
+        qTa.value = qa.q || '';
+        bindInput(qTa, function () { qa.q = qTa.value; });
+        fields.appendChild(qTa);
+
+        fields.appendChild(el('label', '', 'Answer ' + (i + 1)));
+        var aTa = el('textarea', '');
+        aTa.rows = 2;
+        aTa.value = qa.a || '';
+        bindInput(aTa, function () { qa.a = aTa.value; });
+        fields.appendChild(aTa);
+
+        var delBtn = el('button', 'danger', 'Remove question');
+        delBtn.style.marginTop = '6px';
+        delBtn.onclick = function () {
+            card.questions.splice(i, 1);
+            renderAll();
+        };
+        fields.appendChild(delBtn);
+        row.appendChild(fields);
+        holder.appendChild(row);
+    });
+
+    var addBtn = el('button', '', '+ Add question');
+    addBtn.onclick = function () {
+        card.questions.push({ q: '', a: '' });
+        renderAll();
+    };
+    holder.appendChild(addBtn);
+}
+
+function renderFlashcardsEditor() {
+    var holder = document.getElementById('chapter-editor');
+    holder.innerHTML = '';
+    ensureStudyArrays();
+
+    var wrap = el('div', 'editor-card');
+    wrap.appendChild(el('h2', '', 'Flashcards'));
+    wrap.appendChild(el('div', 'inline-note',
+        'These power the <strong>Flashcards</strong> page on the site (Terms mode = term &rarr; definition; ' +
+        'Questions mode = the Q/A pairs below). <strong>Definition</strong>, <strong>details</strong> and ' +
+        '<strong>example</strong> support &lt;strong&gt; / &lt;code&gt; / &lt;em&gt;.'));
+
+    var addBtn = el('button', 'primary', '+ New flashcard');
+    addBtn.onclick = function () {
+        var card = {
+            id: slug('fc-' + Date.now()),
+            term: 'New term',
+            definition: '',
+            chapter: state.db.chapters.length ? state.db.chapters[0].id : '',
+            questions: []
+        };
+        ensureUid(card);
+        state.db.flashcards.push(card);
+        state.openUids[card._uid] = true;
+        renderAll();
+    };
+    wrap.appendChild(addBtn);
+    wrap.appendChild(el('div', '', ''));
+
+    if (!state.db.flashcards.length) {
+        wrap.appendChild(el('div', 'empty-chapter', 'No flashcards yet — create the first one.'));
+    }
+
+    var list = el('div', 'blist');
+    state.db.flashcards.forEach(function (card, i) {
+        list.appendChild(renderFlashcardRow(state.db.flashcards, card, i));
+    });
+    wrap.appendChild(list);
+    holder.appendChild(wrap);
+}
+
+function renderFlashcardRow(cards, card, i) {
+    ensureUid(card);
+    var uid = card._uid;
+    var isOpen = !!state.openUids[uid];
+
+    var row = el('div', 'brow');
+    var head = el('div', 'brow-head');
+    var badge = el('span', 'badge', esc(card.chapter || '—'));
+    var previewEl = el('span', 'brow-preview',
+        esc(card.term || '(untitled)') + ' · ' +
+        ((card.questions || []).length) + ' q');
+    var toggle = function () {
+        if (state.openUids[uid]) delete state.openUids[uid];
+        else state.openUids[uid] = true;
+        renderAll();
+    };
+    [badge, previewEl].forEach(function (n) {
+        n.style.cursor = 'pointer';
+        n.title = isOpen ? 'Collapse editor' : 'Open editor';
+        n.onclick = toggle;
+    });
+    head.appendChild(badge);
+    head.appendChild(previewEl);
+
+    var up = el('button', '', '&uarr;'); up.title = 'Move up'; up.disabled = i === 0;
+    var down = el('button', '', '&darr;'); down.title = 'Move down'; down.disabled = i === cards.length - 1;
+    var edit = el('button', isOpen ? 'primary' : '', isOpen ? 'Done' : 'Edit');
+    var del = el('button', 'danger', '&times;'); del.title = 'Delete flashcard';
+    up.onclick = function (e) { e.stopPropagation(); swap(cards, i, i - 1); };
+    down.onclick = function (e) { e.stopPropagation(); swap(cards, i, i + 1); };
+    edit.onclick = function (e) { e.stopPropagation(); toggle(); };
+    del.onclick = function (e) {
+        e.stopPropagation();
+        if (confirm('Delete flashcard "' + (card.term || 'untitled') + '"?')) {
+            cards.splice(i, 1);
+            delete state.openUids[uid];
+            renderAll();
+        }
+    };
+    head.appendChild(up); head.appendChild(down); head.appendChild(edit); head.appendChild(del);
+    row.appendChild(head);
+
+    if (isOpen) {
+        var form = el('div', 'brow-form');
+
+        var row1 = el('div', 'field-row');
+        var termWrap = el('div');
+        termWrap.appendChild(el('label', '', 'Term (front of card)'));
+        var termIn = el('input', '');
+        termIn.type = 'text';
+        termIn.value = card.term || '';
+        bindInput(termIn, function () { card.term = termIn.value; });
+        termWrap.appendChild(termIn);
+
+        var idWrap = el('div');
+        idWrap.appendChild(el('label', '', 'ID (unique, auto-slugs on save)'));
+        var idIn = el('input', '');
+        idIn.type = 'text';
+        idIn.value = card.id || '';
+        idIn.addEventListener('change', function () {
+            card.id = slug(idIn.value);
+            idIn.value = card.id;
+        });
+        idWrap.appendChild(idIn);
+        row1.appendChild(termWrap); row1.appendChild(idWrap);
+        form.appendChild(row1);
+
+        form.appendChild(el('label', '', 'Chapter (filter on the site)'));
+        form.appendChild(chapterSelect(state.db.chapters, card.chapter, function (v) { card.chapter = v; }));
+
+        form.appendChild(el('label', '', 'Definition (back of card — required)'));
+        var defTa = el('textarea', '');
+        defTa.rows = 3;
+        defTa.value = card.definition || '';
+        bindInput(defTa, function () { card.definition = defTa.value; });
+        form.appendChild(defTa);
+
+        form.appendChild(el('label', '', 'Details (optional — shown on the back)'));
+        var detTa = el('textarea', '');
+        detTa.rows = 3;
+        detTa.value = card.details || '';
+        bindInput(detTa, function () { card.details = detTa.value; });
+        form.appendChild(detTa);
+
+        form.appendChild(el('label', '', 'Example (optional — shown on the back, keeps line breaks)'));
+        var exTa = el('textarea', '');
+        exTa.rows = 3;
+        exTa.style.fontFamily = "var(--code-font)";
+        exTa.value = card.example || '';
+        bindInput(exTa, function () { card.example = exTa.value; });
+        form.appendChild(exTa);
+
+        var sub = el('div', 'subblocks');
+        sub.appendChild(el('label', '', 'Questions (flashcard Q/A practice + question mode)'));
+        fcQuestionRows(card, sub);
+        form.appendChild(sub);
+
+        row.appendChild(form);
+    }
+    return row;
+}
+
+function renderQuizEditor() {
+    var holder = document.getElementById('chapter-editor');
+    holder.innerHTML = '';
+    ensureStudyArrays();
+
+    var wrap = el('div', 'editor-card');
+    wrap.appendChild(el('h2', '', 'Quiz Questions'));
+    wrap.appendChild(el('div', 'inline-note',
+        'These power the <strong>Quiz</strong> page (multiple choice + explanations, and the Speed Round). ' +
+        'Mark the correct option with the radio button.'));
+
+    var addBtn = el('button', 'primary', '+ New question');
+    addBtn.onclick = function () {
+        var q = {
+            q: 'New question?',
+            opts: ['', '', '', ''],
+            ans: 0,
+            exp: '',
+            chapter: state.db.chapters.length ? state.db.chapters[0].id : ''
+        };
+        ensureUid(q);
+        state.db.quiz.push(q);
+        state.openUids[q._uid] = true;
+        renderAll();
+    };
+    wrap.appendChild(addBtn);
+    wrap.appendChild(el('div', '', ''));
+
+    if (!state.db.quiz.length) {
+        wrap.appendChild(el('div', 'empty-chapter', 'No quiz questions yet — create the first one.'));
+    }
+
+    var list = el('div', 'blist');
+    state.db.quiz.forEach(function (q, i) {
+        list.appendChild(renderQuizRow(state.db.quiz, q, i));
+    });
+    wrap.appendChild(list);
+    holder.appendChild(wrap);
+}
+
+function renderQuizRow(questions, q, i) {
+    ensureUid(q);
+    var uid = q._uid;
+    var isOpen = !!state.openUids[uid];
+
+    var row = el('div', 'brow');
+    var head = el('div', 'brow-head');
+    var badge = el('span', 'badge', esc(q.chapter || '—'));
+    var previewEl = el('span', 'brow-preview', esc(q.q || '(no question)'));
+    var toggle = function () {
+        if (state.openUids[uid]) delete state.openUids[uid];
+        else state.openUids[uid] = true;
+        renderAll();
+    };
+    [badge, previewEl].forEach(function (n) {
+        n.style.cursor = 'pointer';
+        n.title = isOpen ? 'Collapse editor' : 'Open editor';
+        n.onclick = toggle;
+    });
+    head.appendChild(badge);
+    head.appendChild(previewEl);
+
+    var up = el('button', '', '&uarr;'); up.title = 'Move up'; up.disabled = i === 0;
+    var down = el('button', '', '&darr;'); down.title = 'Move down'; down.disabled = i === questions.length - 1;
+    var edit = el('button', isOpen ? 'primary' : '', isOpen ? 'Done' : 'Edit');
+    var del = el('button', 'danger', '&times;'); del.title = 'Delete question';
+    up.onclick = function (e) { e.stopPropagation(); swap(questions, i, i - 1); };
+    down.onclick = function (e) { e.stopPropagation(); swap(questions, i, i + 1); };
+    edit.onclick = function (e) { e.stopPropagation(); toggle(); };
+    del.onclick = function (e) {
+        e.stopPropagation();
+        if (confirm('Delete this quiz question?')) {
+            questions.splice(i, 1);
+            delete state.openUids[uid];
+            renderAll();
+        }
+    };
+    head.appendChild(up); head.appendChild(down); head.appendChild(edit); head.appendChild(del);
+    row.appendChild(head);
+
+    if (isOpen) {
+        var form = el('div', 'brow-form');
+
+        form.appendChild(el('label', '', 'Question'));
+        var qTa = el('textarea', '');
+        qTa.rows = 2;
+        qTa.value = q.q || '';
+        bindInput(qTa, function () { q.q = qTa.value; });
+        form.appendChild(qTa);
+
+        form.appendChild(el('label', '', 'Chapter (filter on the site)'));
+        form.appendChild(chapterSelect(state.db.chapters, q.chapter, function (v) { q.chapter = v; }));
+
+        form.appendChild(el('span', 'mini-label', 'Options — select the radio button of the correct one'));
+        (q.opts || (q.opts = [''])).forEach(function (opt, oi) {
+            var optRow = el('div', 'opt-row');
+            var radio = el('input', '');
+            radio.type = 'radio';
+            radio.name = 'ans-' + uid;
+            radio.checked = q.ans === oi;
+            radio.title = 'Mark as correct answer';
+            radio.addEventListener('change', function () { q.ans = oi; renderAll(); });
+            optRow.appendChild(radio);
+
+            var optIn = el('input', '');
+            optIn.type = 'text';
+            optIn.value = opt;
+            optIn.placeholder = 'Option ' + (oi + 1);
+            bindInput(optIn, function () { q.opts[oi] = optIn.value; });
+            optRow.appendChild(optIn);
+
+            if (q.opts.length > 2) {
+                var rm = el('button', 'danger', '&times;');
+                rm.title = 'Remove option';
+                rm.onclick = function () {
+                    q.opts.splice(oi, 1);
+                    if (q.ans >= q.opts.length) q.ans = q.opts.length - 1;
+                    renderAll();
+                };
+                optRow.appendChild(rm);
+            }
+            form.appendChild(optRow);
+        });
+
+        var addOpt = el('button', '', '+ Add option');
+        addOpt.style.marginTop = '4px';
+        addOpt.onclick = function () {
+            q.opts.push('');
+            renderAll();
+        };
+        form.appendChild(addOpt);
+
+        form.appendChild(el('label', '', 'Explanation (shown after answering)'));
+        var expTa = el('textarea', '');
+        expTa.rows = 2;
+        expTa.value = q.exp || '';
+        bindInput(expTa, function () { q.exp = expTa.value; });
+        form.appendChild(expTa);
+
+        row.appendChild(form);
+    }
+    return row;
+}
+
 // ---------- Save ----------
 async function saveToGitHub() {
     if (!state.settings || !state.db) return;
@@ -539,8 +909,15 @@ async function saveToGitHub() {
 // ---------- Render everything ----------
 function renderAll() {
     if (!state.db) return;
+    ensureStudyArrays();
     renderChapterList();
-    renderChapterEditor();
+    if (state.view === 'flashcards') {
+        renderFlashcardsEditor();
+    } else if (state.view === 'quiz') {
+        renderQuizEditor();
+    } else {
+        renderChapterEditor();
+    }
 }
 
 // ---------- Wiring ----------
@@ -552,6 +929,9 @@ function bindUI() {
         showLoginFirstTime();
     };
     document.getElementById('btn-save').onclick = saveToGitHub;
+
+    document.getElementById('study-nav-flashcards').onclick = function () { setView('flashcards'); };
+    document.getElementById('study-nav-quiz').onclick = function () { setView('quiz'); };
 
     document.getElementById('btn-settings').onclick = function () {
         var ls = document.getElementById('login-screen');
@@ -580,6 +960,7 @@ function bindUI() {
         var ch = { id: slug(title), title: title, subtitle: '', pdf: pdf, blocks: [] };
         state.db.chapters.push(ch);
         state.selectedChapterId = ch.id;
+        state.view = 'chapters';
         document.getElementById('new-chap-form').classList.add('hidden');
         document.getElementById('nc-title').value = '';
         document.getElementById('nc-pdf').value = '';
@@ -628,9 +1009,11 @@ async function connect() {
             }
             state.db = { version: 1, site: { title: 'A2CS', subtitle: 'Exam Prep' }, chapters: [] };
         }
+        ensureStudyArrays();
         state.settings = s;
         localStorage.setItem(LS_KEY, JSON.stringify(s));
         state.selectedChapterId = state.db.chapters.length ? state.db.chapters[0].id : null;
+        state.view = 'chapters';
         state.openUids = {};
         showApp();
     } catch (err) {
@@ -656,7 +1039,9 @@ function init() {
             var current = await loadRemoteDb(state.settings);
             state.db = current.exists ? current.db : null;
             if (state.db && Array.isArray(state.db.chapters)) {
+                ensureStudyArrays();
                 state.selectedChapterId = state.db.chapters.length ? state.db.chapters[0].id : null;
+                state.view = 'chapters';
                 showApp();
             } else {
                 state.settings = null;
