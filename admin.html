@@ -59,6 +59,10 @@
         @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
         @media (max-width:800px) { aside { width:220px; } .field-row { flex-direction:column; gap:0; } .brow-preview { display:none; } }
     </style>
+    <script type="module">
+        import { inject } from 'https://cdn.jsdelivr.net/npm/@vercel/analytics@1/dist/index.js';
+        inject();
+    </script>
 </head>
 <body>
     <header>
