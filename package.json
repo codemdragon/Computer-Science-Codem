@@ -1,0 +1,26 @@
+{
+  "name": "a2cs-revision",
+  "version": "1.0.0",
+  "description": "A2CS Revision application for 9709 Cambridge Computer Science",
+  "type": "module",
+  "scripts": {
+    "dev": "npx http-server -p 3000",
+    "build": "echo 'No build step required for static HTML'",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "education",
+    "revision",
+    "computer-science",
+    "cambridge",
+    "a2"
+  ],
+  "dependencies": {
+    "@vercel/analytics": "^1.1.1"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codemdragon/Computer-Science-Codem"
+  }
+}
