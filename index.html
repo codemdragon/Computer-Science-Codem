@@ -1005,6 +1005,214 @@
         .qz-wrong-item { font-size: 0.85rem; padding: 0.6rem 0.7rem; background: rgba(229, 80, 57, 0.06); border-radius: 4px; margin-bottom: 0.5rem; }
         .qz-wrong-item em { color: var(--text-muted); }
 
+        /* --- Pseudocode Builder (UDD mini game) --- */
+        .ps-snippets { margin-bottom: 0.4rem; }
+
+        .ps-card { cursor: default; max-width: 720px; }
+        .ps-card .flashcard-inner { transform: none; }
+
+        .ps-face {
+            grid-area: 1 / 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1.35rem 1.4rem;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent-blue-bright);
+        }
+
+        .ps-stagebar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding-bottom: 0.7rem;
+            margin-bottom: 0.2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ps-phase {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--accent-blue-bright);
+        }
+
+        .ps-dots { display: inline-flex; gap: 5px; }
+
+        .ps-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--border-color);
+        }
+
+        .ps-dot.done { background: var(--accent-blue-bright); }
+        .ps-dot.on { background: #26de81; transform: scale(1.15); }
+
+        .ps-count { margin-left: auto; font-size: 0.78rem; color: var(--text-muted); }
+
+        .ps-blankcount {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin: 0.7rem 0 0.1rem;
+        }
+
+        .ps-blankcount .ic { color: var(--accent-blue-bright); }
+
+        .ps-prompt {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0.7rem 0 0.1rem;
+        }
+
+        .ps-prompt .ic { color: var(--accent-blue-bright); flex-shrink: 0; }
+
+        .ps-code {
+            font-family: var(--code-font);
+            font-size: 0.88rem;
+            line-height: 2;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.85rem 1rem;
+            margin: 0.6rem 0 0.9rem;
+            overflow-x: auto;
+            white-space: pre;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .ps-line { display: block; white-space: pre; }
+
+        .ps-tk { color: var(--text-main); }
+
+        .ps-given { color: #7fd4ff; }
+
+        .ps-reveal.ps-ok { color: #26de81; }
+
+        .ps-reveal.ps-bad {
+            color: #e55039;
+            text-decoration: line-through;
+            text-decoration-thickness: 1px;
+        }
+
+        .ps-blank {
+            display: inline-block;
+            min-width: 62px;
+            text-align: center;
+            border-bottom: 1.5px dashed var(--accent-blue-bright);
+            background: rgba(0, 128, 255, 0.07);
+            color: var(--accent-blue-bright);
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .ps-qline {
+            font-size: 0.95rem;
+            color: white;
+            margin: 0.2rem 0 0.7rem;
+        }
+
+        .ps-qline strong { color: var(--accent-blue-bright); }
+
+        .ps-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 0.3rem;
+        }
+
+        .ps-opt {
+            font-family: var(--code-font);
+            font-size: 0.88rem;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-main);
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+            touch-action: manipulation;
+        }
+
+        .ps-opt:hover { border-color: var(--accent-blue-bright); background: var(--bg-card-hover); }
+
+        .ps-feedback {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            padding: 0.6rem 0.85rem;
+            border-radius: 6px;
+            margin-top: 0.2rem;
+            border-left: 3px solid var(--border-color);
+            background: rgba(0, 102, 204, 0.08);
+        }
+
+        .ps-feedback .ic { flex-shrink: 0; }
+        .ps-feedback.ok { border-left-color: #26de81; color: #26de81; background: rgba(38, 222, 129, 0.1); }
+        .ps-feedback.bad { border-left-color: #e55039; color: #e55039; background: rgba(229, 80, 57, 0.1); }
+
+        .ps-inputs { display: flex; flex-direction: column; gap: 8px; }
+
+        .ps-input-row { display: flex; align-items: center; gap: 9px; }
+
+        .ps-input-num {
+            flex-shrink: 0;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(0, 102, 204, 0.2);
+            color: var(--accent-blue-bright);
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ps-input-main { flex: 1; min-width: 0; }
+
+        .ps-input-q {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+
+        .ps-input {
+            width: 100%;
+            font-family: var(--code-font);
+            font-size: 0.88rem;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-main);
+            padding: 7px 10px;
+        }
+
+        .ps-input:focus { outline: none; border-color: var(--accent-blue-bright); }
+        .ps-input.ps-bad { border-color: #e55039; background: rgba(229, 80, 57, 0.08); }
+        .ps-input.ps-good { border-color: #26de81; background: rgba(38, 222, 129, 0.08); }
+
+        .ps-mark { flex-shrink: 0; font-size: 1rem; }
+        .ps-mark.good { color: #26de81; }
+        .ps-mark.bad { color: #e55039; }
+
+        @media (max-width: 640px) {
+            .ps-code { font-size: 0.78rem; line-height: 1.9; }
+            .ps-face { padding: 1.1rem 1rem; }
+            .ps-count { margin-left: 0; }
+        }
+
         @media (max-width: 640px) {
             .quiz-options { grid-template-columns: 1fr; }
             .flashcard-front,
@@ -1036,6 +1244,7 @@
             <div id="nav-study">
                 <div class="nav-item" data-target="study-flashcards" onclick="showSection('study-flashcards')"><span class="nav-icon" id="nav-icon-flashcards"></span>Flashcards</div>
                 <div class="nav-item" data-target="study-quiz" onclick="showSection('study-quiz')"><span class="nav-icon" id="nav-icon-quiz"></span>Quiz</div>
+                <div class="nav-item" data-target="study-pseudocode" onclick="showSection('study-pseudocode')"><span class="nav-icon" id="nav-icon-pseudocode"></span>Pseudocode Builder</div>
             </div>
             <div class="nav-label" style="margin-top: 2rem;">Settings</div>
             <a class="nav-item" href="admin.html">Admin Panel</a>
@@ -1056,7 +1265,8 @@
         (function applyStudyIcons() {
             var icons = window.Study && window.Study.icons;
             if (!icons) return;
-            [['nav-icon-flashcards', icons.cards], ['nav-icon-quiz', icons.clipboard]].forEach(function (pair) {
+            [['nav-icon-flashcards', icons.cards], ['nav-icon-quiz', icons.clipboard],
+             ['nav-icon-pseudocode', icons.code]].forEach(function (pair) {
                 var holder = document.getElementById(pair[0]);
                 if (holder) holder.innerHTML = pair[1];
             });

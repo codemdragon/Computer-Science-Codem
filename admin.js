@@ -36,13 +36,14 @@ var state = {
     db: null,
     selectedChapterId: null,
     openUids: {},
-    view: 'chapters'   // 'chapters' | 'flashcards' | 'quiz'
+    view: 'chapters'   // 'chapters' | 'flashcards' | 'quiz' | 'pseudocode'
 };
 
 function ensureStudyArrays() {
     if (!state.db) return;
     if (!Array.isArray(state.db.flashcards)) state.db.flashcards = [];
     if (!Array.isArray(state.db.quiz)) state.db.quiz = [];
+    if (!Array.isArray(state.db.pseudocode)) state.db.pseudocode = [];
 }
 
 var BLOCK_TYPES = [
@@ -212,6 +213,7 @@ function renderChapterList() {
     // Study content nav (Flashcards / Quiz)
     var fcNav = document.getElementById('study-nav-flashcards');
     var qzNav = document.getElementById('study-nav-quiz');
+    var psNav = document.getElementById('study-nav-pseudocode');
     if (fcNav && qzNav) {
         fcNav.classList.toggle('selected', state.view === 'flashcards');
         qzNav.classList.toggle('selected', state.view === 'quiz');
@@ -219,6 +221,11 @@ function renderChapterList() {
             (state.db.flashcards ? state.db.flashcards.length : 0) + ' cards';
         document.getElementById('study-quiz-count').textContent =
             (state.db.quiz ? state.db.quiz.length : 0) + ' questions';
+        if (psNav) {
+            psNav.classList.toggle('selected', state.view === 'pseudocode');
+            document.getElementById('study-ps-count').textContent =
+                (state.db.pseudocode ? state.db.pseudocode.length : 0) + ' snippets';
+        }
     }
 }
 
@@ -921,6 +928,261 @@ function renderQuizRow(questions, q, i) {
     return row;
 }
 
+// ---------- Pseudocode Builder editor ----------
+// Write the snippet with {{placeholder}} tokens, then describe each placeholder.
+function pseudoBlankKeys(code) {
+    var keys = [];
+    String(code || '').replace(/\{\{([^}]+)\}\}/g, function (m, k) {
+        k = k.trim();
+        if (keys.indexOf(k) === -1) keys.push(k);
+        return m;
+    });
+    return keys;
+}
+
+function pseudoWarnings(snippet) {
+    var w = [];
+    var keys = pseudoBlankKeys((snippet.code || []).join('\n'));
+    if (keys.length < 3) w.push('Only ' + keys.length + ' blank(s) — the game needs at least 3');
+    keys.forEach(function (k) {
+        var b = (snippet.blanks || {})[k];
+        if (!b || !b.a) { w.push('Blank "' + k + '" has no answer'); return; }
+        var opts = b.opts || [];
+        if (opts.length < 3) w.push('Blank "' + k + '" needs at least 3 options');
+        if (opts.indexOf(b.a) === -1) w.push('Blank "' + k + '" — the answer is not one of the options');
+    });
+    Object.keys(snippet.blanks || {}).forEach(function (k) {
+        if (keys.indexOf(k) === -1) w.push('Blank "' + k + '" is not used in the code any more');
+    });
+    return w;
+}
+
+function pseudoPlan(snippet) {
+    var n = pseudoBlankKeys((snippet.code || []).join('\n')).length;
+    if (n < 1) return '';
+    var sizes = [];
+    for (var k = 1; k <= Math.min(3, Math.max(n - 1, 0)); k++) sizes.push(k);
+    if (sizes[sizes.length - 1] !== n) sizes.push(n);
+    var steps = sizes.map(function (s, i) {
+        return i === sizes.length - 1 ? 'all ' + s + ' (build it)' : s + ' blank' + (s === 1 ? '' : 's');
+    });
+    return 'Stages: ' + steps.join(' \u2192 ') + ' \u2192 type it';
+}
+
+function renderPseudoEditor() {
+    var holder = document.getElementById('chapter-editor');
+    holder.innerHTML = '';
+    ensureStudyArrays();
+
+    var wrap = el('div', 'editor-card');
+    wrap.appendChild(el('h2', '', 'Pseudocode Builder (UDD)'));
+    wrap.appendChild(el('div', 'inline-note',
+        'Powers the <strong>Pseudocode Builder</strong> game. Write the snippet in the code box using ' +
+        '<code>{{placeholder}}</code> tokens, then give each placeholder a question, the correct answer and ' +
+        'three or more options. The game hides one blank, then two, then three, then the whole snippet ' +
+        '(multiple choice), and finally asks the student to type it from memory.'));
+
+    var addBtn = el('button', 'primary', '+ New snippet');
+    addBtn.onclick = function () {
+        var s = {
+            id: slug('ps-' + Date.now()),
+            title: 'New snippet',
+            intro: '',
+            chapter: state.db.chapters.length ? state.db.chapters[0].id : '',
+            code: ['TYPE {{typeName}} = ({{values}})'],
+            blanks: { typeName: { q: 'What is the name of the type?', a: '', opts: ['', '', ''] } }
+        };
+        ensureUid(s);
+        state.db.pseudocode.push(s);
+        state.openUids[s._uid] = true;
+        renderAll();
+    };
+    wrap.appendChild(addBtn);
+    wrap.appendChild(el('div', '', ''));
+
+    if (!state.db.pseudocode.length) {
+        wrap.appendChild(el('div', 'empty-chapter', 'No pseudocode snippets yet — create the first one.'));
+    }
+
+    var list = el('div', 'blist');
+    state.db.pseudocode.forEach(function (s, i) {
+        list.appendChild(renderPseudoRow(state.db.pseudocode, s, i));
+    });
+    wrap.appendChild(list);
+    holder.appendChild(wrap);
+}
+
+function renderPseudoRow(snippets, snippet, i) {
+    ensureUid(snippet);
+    var uid = snippet._uid;
+    var isOpen = !!state.openUids[uid];
+    var keys = pseudoBlankKeys((snippet.code || []).join('\n'));
+    var warns = pseudoWarnings(snippet);
+
+    var row = el('div', 'brow');
+    var head = el('div', 'brow-head');
+    var badge = el('span', 'badge', esc(snippet.chapter || '—'));
+    var previewEl = el('span', 'brow-preview',
+        esc(snippet.title || '(untitled)') + ' · ' + keys.length + ' blanks · ' +
+        ((snippet.code || []).length) + ' lines');
+    var toggle = function () {
+        if (state.openUids[uid]) delete state.openUids[uid];
+        else state.openUids[uid] = true;
+        renderAll();
+    };
+    [badge, previewEl].forEach(function (n) {
+        n.style.cursor = 'pointer';
+        n.title = isOpen ? 'Collapse editor' : 'Open editor';
+        n.onclick = toggle;
+    });
+    head.appendChild(badge);
+    if (warns.length) {
+        var warnBadge = el('span', 'badge warn', 'Check blanks');
+        warnBadge.title = warns.join('\n');
+        warnBadge.style.cursor = 'pointer';
+        warnBadge.onclick = toggle;
+        head.appendChild(warnBadge);
+    }
+    head.appendChild(previewEl);
+
+    var up = el('button', '', '&uarr;'); up.title = 'Move up'; up.disabled = i === 0;
+    var down = el('button', '', '&darr;'); down.title = 'Move down'; down.disabled = i === snippets.length - 1;
+    var edit = el('button', isOpen ? 'primary' : '', isOpen ? 'Done' : 'Edit');
+    var del = el('button', 'danger', '&times;'); del.title = 'Delete snippet';
+    up.onclick = function (e) { e.stopPropagation(); swap(snippets, i, i - 1); };
+    down.onclick = function (e) { e.stopPropagation(); swap(snippets, i, i + 1); };
+    edit.onclick = function (e) { e.stopPropagation(); toggle(); };
+    del.onclick = function (e) {
+        e.stopPropagation();
+        if (confirm('Delete snippet "' + (snippet.title || 'untitled') + '"?')) {
+            snippets.splice(i, 1);
+            delete state.openUids[uid];
+            renderAll();
+        }
+    };
+    head.appendChild(up); head.appendChild(down); head.appendChild(edit); head.appendChild(del);
+    row.appendChild(head);
+
+    if (!isOpen) return row;
+
+    var form = el('div', 'brow-form');
+
+    var row1 = el('div', 'field-row');
+    var titleWrap = el('div');
+    titleWrap.appendChild(el('label', '', 'Title (the chip in the game)'));
+    var titleIn = el('input', '');
+    titleIn.type = 'text';
+    titleIn.value = snippet.title || '';
+    bindInput(titleIn, function () { snippet.title = titleIn.value; });
+    titleWrap.appendChild(titleIn);
+
+    var idWrap = el('div');
+    idWrap.appendChild(el('label', '', 'ID (unique, auto-slugs on save)'));
+    var idIn = el('input', '');
+    idIn.type = 'text';
+    idIn.value = snippet.id || '';
+    idIn.addEventListener('change', function () {
+        snippet.id = slug(idIn.value);
+        idIn.value = snippet.id;
+    });
+    idWrap.appendChild(idIn);
+    row1.appendChild(titleWrap); row1.appendChild(idWrap);
+    form.appendChild(row1);
+
+    form.appendChild(el('label', '', 'Chapter (filter, usually data-types)'));
+    form.appendChild(chapterSelect(state.db.chapters, snippet.chapter, function (v) { snippet.chapter = v; }));
+
+    form.appendChild(el('label', '', 'Intro (one line shown above the game)'));
+    var introTa = el('textarea', '');
+    introTa.rows = 2;
+    introTa.value = snippet.intro || '';
+    bindInput(introTa, function () { snippet.intro = introTa.value; });
+    form.appendChild(introTa);
+
+    form.appendChild(el('label', '', 'Pseudocode — wrap each blank in {{ }} (indentation is kept)'));
+    var codeTa = el('textarea', '');
+    codeTa.rows = 8;
+    codeTa.style.fontFamily = 'var(--code-font)';
+    codeTa.style.whiteSpace = 'pre';
+    codeTa.value = (snippet.code || []).join('\n');
+    codeTa.addEventListener('input', function () {
+        snippet.code = codeTa.value.split('\n');
+    });
+    codeTa.addEventListener('change', function () {
+        snippet.code = codeTa.value.split('\n');
+        var now = pseudoBlankKeys(codeTa.value).join('|');
+        if (now !== keys.join('|')) renderAll();   // placeholders changed — refresh the blank editors
+    });
+    form.appendChild(codeTa);
+
+    if (!keys.length) {
+        form.appendChild(el('div', 'inline-note', 'No {{placeholders}} found yet in the code above.'));
+    }
+
+    var sub = el('div', 'subblocks');
+    sub.appendChild(el('div', 'mini-label', 'Blanks — generated from the {{placeholders}} in the code'));
+    snippet.blanks = snippet.blanks || {};
+
+    keys.forEach(function (k) {
+        var b = snippet.blanks[k] || (snippet.blanks[k] = { q: '', a: '', opts: ['', '', ''] });
+        var block = el('div', 'ps-blank-editor');
+
+        var head3 = el('div', 'ps-blank-head');
+        head3.appendChild(el('code', '', '{{' + esc(k) + '}}'));
+        var rm = el('button', 'danger', 'Remove');
+        rm.title = 'Remove this blank from the code';
+        rm.onclick = function () {
+            snippet.code = (snippet.code || []).map(function (line) {
+                return line.replace(new RegExp('\\{\\{\\s*' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\}\\}', 'g'), b.a || '');
+            });
+            delete snippet.blanks[k];
+            renderAll();
+        };
+        head3.appendChild(rm);
+        block.appendChild(head3);
+
+        block.appendChild(el('label', '', 'Question shown to the student'));
+        var qIn = el('input', '');
+        qIn.type = 'text';
+        qIn.value = b.q || '';
+        bindInput(qIn, function () { b.q = qIn.value; });
+        block.appendChild(qIn);
+
+        block.appendChild(el('label', '', 'Correct answer'));
+        var aIn = el('input', '');
+        aIn.type = 'text';
+        aIn.style.fontFamily = 'var(--code-font)';
+        aIn.value = b.a || '';
+        bindInput(aIn, function () { b.a = aIn.value; });
+        block.appendChild(aIn);
+
+        block.appendChild(el('label', '', 'Options — one per line, 3 or more, must include the answer'));
+        var optTa = el('textarea', '');
+        optTa.rows = 3;
+        optTa.style.fontFamily = 'var(--code-font)';
+        optTa.value = (b.opts || []).join('\n');
+        bindInput(optTa, function () {
+            b.opts = optTa.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        });
+        block.appendChild(optTa);
+
+        var problems = [];
+        if (!b.a) problems.push('no correct answer yet');
+        if ((b.opts || []).length < 3) problems.push('needs at least 3 options');
+        else if (b.a && (b.opts || []).indexOf(b.a) === -1) problems.push('the answer is not one of the options');
+        if (problems.length) block.appendChild(el('div', 'inline-note warn-note', 'Check: ' + problems.join(', ')));
+
+        sub.appendChild(block);
+    });
+    form.appendChild(sub);
+
+    var plan = pseudoPlan(snippet);
+    if (plan) form.appendChild(el('div', 'inline-note', plan));
+
+    row.appendChild(form);
+    return row;
+}
+
 // ---------- Save ----------
 async function saveToGitHub() {
     if (!state.settings || !state.db) return;
@@ -972,6 +1234,8 @@ function renderAll() {
         renderFlashcardsEditor();
     } else if (state.view === 'quiz') {
         renderQuizEditor();
+    } else if (state.view === 'pseudocode') {
+        renderPseudoEditor();
     } else {
         renderChapterEditor();
     }
@@ -989,6 +1253,7 @@ function bindUI() {
 
     document.getElementById('study-nav-flashcards').onclick = function () { setView('flashcards'); };
     document.getElementById('study-nav-quiz').onclick = function () { setView('quiz'); };
+    document.getElementById('study-nav-pseudocode').onclick = function () { setView('pseudocode'); };
 
     document.getElementById('btn-settings').onclick = function () {
         var ls = document.getElementById('login-screen');

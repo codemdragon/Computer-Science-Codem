@@ -25,7 +25,8 @@ window.Study = (function () {
         retry: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="2 4 2 10 8 10"></polyline><path d="M4.5 15a9 9 0 1 0 2.1-9.4L2 10"></path></svg>',
         sparkle: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 3l1.7 4.6L17.3 9l-4.6 1.7L11 15.3 9.3 10.7 4.7 9l4.6-1.4z"></path><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"></path></svg>',
         cards: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="6" width="15" height="15" rx="2"></rect><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3H19a3 3 0 0 1 3 3v10.5a1.5 1.5 0 0 1-1.5 1.5H17"></path></svg>',
-        clipboard: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5"></path><path d="M15 4.5h2.5A1.5 1.5 0 0 1 19 6v13.5A1.5 1.5 0 0 1 17.5 21h-11A1.5 1.5 0 0 1 5 19.5V6a1.5 1.5 0 0 1 1.5-1.5H9"></path><polyline points="9 13 11.2 15.2 15.5 10.5"></polyline></svg>'
+        clipboard: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5"></path><path d="M15 4.5h2.5A1.5 1.5 0 0 1 19 6v13.5A1.5 1.5 0 0 1 17.5 21h-11A1.5 1.5 0 0 1 5 19.5V6a1.5 1.5 0 0 1 1.5-1.5H9"></path><polyline points="9 13 11.2 15.2 15.5 10.5"></polyline></svg>',
+        code: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>'
     };
 
     // ---------- Utilities ----------
@@ -404,6 +405,445 @@ window.Study = (function () {
     }
 
     // =================================================================
+    // PSEUDOCODE BUILDER (UDD) — a fill-in-the-blanks mini game.
+    //   1. Stage 1     — ONE blank missing, multiple choice
+    //   2. Stage 2/3   — two, then three blanks missing, multiple choice
+    //   3. Build it    — every blank missing, multiple choice (one at a time)
+    //   4. Type it     — all blanks empty again, typed from memory
+    // Content lives in db.json -> `pseudocode` (editable in the Admin Panel).
+    // =================================================================
+    var ps = { idx: 0, run: null };
+
+    function allPseudo() { return Array.isArray(db.pseudocode) ? db.pseudocode : []; }
+
+    // ---- parsing ----
+    function psTokens(line) {
+        return String(line).split(/(\{\{[^}]+\}\})/).filter(function (p) { return p !== ''; })
+            .map(function (p) {
+                var m = /^\{\{([^}]+)\}\}$/.exec(p);
+                return m ? { blank: m[1].trim() } : { text: p };
+            });
+    }
+
+    function psBlankKeys(snippet) {
+        var keys = [];
+        (snippet.code || []).forEach(function (line) {
+            psTokens(line).forEach(function (t) {
+                if (t.blank && keys.indexOf(t.blank) === -1) keys.push(t.blank);
+            });
+        });
+        return keys;
+    }
+
+    // Rounds: 1 blank, then 2, then 3 … then the whole snippet
+    function psRoundSizes(n) {
+        if (n <= 1) return [1];
+        var sizes = [];
+        for (var k = 1; k <= Math.min(3, n - 1); k++) sizes.push(k);
+        if (sizes[sizes.length - 1] !== n) sizes.push(n);
+        return sizes;
+    }
+
+    // ---- answer matching ----
+    function psNorm(s) {
+        return String(s == null ? '' : s).replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    // Typed answers are forgiving: case, spacing, commas and bracketing may differ
+    function psLoose(s) {
+        return psNorm(s).replace(/[()\[\]{}]/g, '').replace(/[,\s]+/g, ' ').trim();
+    }
+
+    // Multiple choice options are exact, so "Mon Tue" is not the same as "Mon,Tue"
+    function psMatch(blank, picked) {
+        return [blank.a].concat(blank.alt || []).some(function (c) {
+            return psNorm(c) === psNorm(picked);
+        });
+    }
+
+    function psMatchTyped(blank, typed) {
+        return [blank.a].concat(blank.alt || []).some(function (c) {
+            return psNorm(c) === psNorm(typed) || psLoose(c) === psLoose(typed);
+        })
+        // a typed value that omits optional brackets still counts
+        || psLoose(blank.a) === psLoose(typed);
+    }
+
+    // How many gaps a set of blanks leaves in the rendered snippet (a blank key
+    // can appear on more than one line, e.g. {{varName}})
+    function psCountGaps(snippet, keys) {
+        var n = 0;
+        (snippet.code || []).forEach(function (line) {
+            psTokens(line).forEach(function (t) {
+                if (t.blank && keys.indexOf(t.blank) !== -1) n++;
+            });
+        });
+        return n;
+    }
+
+    function psOptions(blank) {
+        var opts = (blank.opts || []).slice();
+        if (opts.indexOf(blank.a) === -1) opts.unshift(blank.a);
+        return opts.filter(function (o, i) { return opts.indexOf(o) === i; });
+    }
+
+    function psAnswers(snippet) {
+        var out = {};
+        psBlankKeys(snippet).forEach(function (k) {
+            out[k] = (snippet.blanks[k] && snippet.blanks[k].a) || k;
+        });
+        return out;
+    }
+
+    // ---- code rendering ----
+    function psLineHtml(line, opts) {
+        opts = opts || {};
+        var marks = opts.marks || {};
+        var expected = opts.expected || {};
+        return psTokens(line).map(function (t) {
+            if (t.text !== undefined) return '<span class="ps-tk">' + esc(t.text) + '</span>';
+            var key = t.blank;
+            if (marks[key] !== undefined) {
+                return '<span class="ps-tk ps-reveal ' + (marks[key] ? 'ps-ok' : 'ps-bad') + '">' +
+                    esc(expected[key] !== undefined ? expected[key] : key) + '</span>';
+            }
+            if ((opts.missing || []).indexOf(key) !== -1) return '<span class="ps-blank">&nbsp;</span>';
+            return '<span class="ps-tk ps-given">' + esc(expected[key] !== undefined ? expected[key] : key) + '</span>';
+        }).join('');
+    }
+
+    function psCodeHtml(lines, opts) {
+        opts = opts || {};
+        return '<pre class="ps-code">' + (lines || []).map(function (l) {
+            return '<span class="ps-line">' + (l === '' ? '&nbsp;' : psLineHtml(l, opts)) + '</span>';
+        }).join('') + '</pre>';
+    }
+
+    function psInputsHtml(keys, blanks, values, marks) {
+        marks = marks || {};
+        return '<div class="ps-inputs">' + keys.map(function (k, i) {
+            var v = values[k] === undefined ? '' : values[k];
+            var state = marks[k];
+            var cls = 'ps-input' + (state === false ? ' ps-bad' : (state === true ? ' ps-good' : ''));
+            return '<div class="ps-input-row">' +
+                '<span class="ps-input-num">' + (i + 1) + '</span>' +
+                '<div class="ps-input-main">' +
+                    '<span class="ps-input-q">' + safeHtml((blanks[k] || {}).q || k) + '</span>' +
+                    '<input type="text" class="' + cls + '" data-blank="' + esc(k) + '" value="' + esc(v) + '" ' +
+                        'spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="' +
+                        esc((blanks[k] || {}).q || k) + '">' +
+                '</div>' +
+                (state === false ? '<span class="ps-mark bad">' + ICONS.cross + '</span>' : '') +
+                (state === true ? '<span class="ps-mark good">' + ICONS.check + '</span>' : '') +
+            '</div>';
+        }).join('') + '</div>';
+    }
+
+    function psProgressHtml(r) {
+        var total = r.sizes.length + 1;                       // MC rounds + "Type it"
+        var step = r.phase === 'type' ? total : r.round + 1;
+        var label;
+        if (r.phase === 'type') label = 'Type it';
+        else if (r.round === r.sizes.length - 1) label = 'Build it — all ' + r.keys.length;
+        else label = 'Stage ' + (r.round + 1) + ' of ' + r.sizes.length;
+
+        var dots = '';
+        for (var i = 1; i <= total; i++) {
+            dots += '<span class="ps-dot' + (i < step ? ' done' : (i === step ? ' on' : '')) + '"></span>';
+        }
+        var count = r.phase === 'mc'
+            ? '<span class="ps-count">Question ' + (r.qi + 1) + ' of ' + r.sizes[r.round] + '</span>'
+            : '<span class="ps-count">' + r.keys.length + ' blank' + (r.keys.length === 1 ? '' : 's') + '</span>';
+
+        return '<div class="ps-stagebar"><span class="ps-phase">' + esc(label) + '</span>' +
+            '<span class="ps-dots">' + dots + '</span>' + count + '</div>';
+    }
+
+    // ---- state machine ----
+    function psStartSnippet() {
+        var s = allPseudo()[ps.idx];
+        if (!s) { ps.run = null; return; }
+        var keys = psBlankKeys(s);
+        ps.run = {
+            snippetId: s.id,
+            keys: keys,
+            sizes: psRoundSizes(keys.length),
+            round: 0,
+            qi: 0,                 // blank index inside the round
+            phase: 'mc',           // 'mc' | 'type'
+            picked: null,          // picked option text for the current blank
+            lastCorrect: false,
+            wrongThisRound: [],
+            flawless: true,
+            optOrder: null,
+            values: {},            // typed values (type phase)
+            marks: null,           // per-blank correctness after a check
+            checked: false,
+            revealed: false,
+            perfect: false
+        };
+    }
+
+    function psRoundKeys(r) {
+        var size = r.phase === 'type' ? r.keys.length : r.sizes[r.round];
+        return r.keys.slice(0, size);
+    }
+
+    function psCurrentKey(r) {
+        var roundKeys = psRoundKeys(r);
+        return roundKeys[Math.min(r.qi, roundKeys.length - 1)];
+    }
+
+    function psStageHtml(s, r) {
+        var expected = psAnswers(s);
+        var head = psProgressHtml(r);
+
+        if (r.phase === 'type') {
+            var marks = r.checked || r.revealed ? (r.revealed ? null : r.marks) : null;
+            var feedback = '';
+            if (r.perfect) {
+                feedback = '<div class="ps-feedback ok">' + ICONS.sparkle +
+                    ' Typed from memory — perfect.</div>';
+            } else if (r.checked) {
+                var wrong = r.keys.filter(function (k) { return r.marks[k] === false; }).length;
+                feedback = '<div class="ps-feedback bad">' + ICONS.cross + ' ' + wrong + ' of ' + r.keys.length +
+                    ' blanks ' + (wrong === 1 ? 'is' : 'are') + ' wrong — the red ones need another look.</div>';
+            } else if (r.revealed) {
+                feedback = '<div class="ps-feedback">' + ICONS.bulb +
+                    ' Answers shown. Try again when you are ready.</div>';
+            }
+
+            var actions = '';
+            if (!r.perfect && !r.revealed) {
+                actions += '<button type="button" class="study-btn primary" id="ps-check">' + ICONS.check + ' Check</button>';
+            }
+            if (r.checked && !r.perfect && !r.revealed) {
+                actions += '<button type="button" class="study-btn" id="ps-show">' + ICONS.bulb + ' Show answers</button>';
+            }
+            if (r.checked || r.revealed) {
+                actions += '<button type="button" class="study-btn" id="ps-again">' + ICONS.retry + ' Try again</button>';
+            }
+            actions += '<button type="button" class="study-btn" id="ps-restart">' + ICONS.retry + ' Start over</button>';
+            if (r.perfect) {
+                actions += '<button type="button" class="study-btn primary" id="ps-next-snippet">Next snippet ' + ICONS.arrowRight + '</button>';
+            }
+
+            // once checked (or revealed) the code block shows the answers instead of gaps
+            var showMissing = (r.checked || r.revealed) ? [] : r.keys;
+
+            return head +
+                '<p class="ps-prompt">' + ICONS.pencil + ' Type the ' + r.keys.length +
+                    ' blank' + (r.keys.length === 1 ? '' : 's') + ' from memory' +
+                    (r.keys.length === 1 ? '' : ' — the code around them is given') + '.</p>' +
+                psCodeHtml(s.code, { missing: showMissing, marks: marks, expected: expected }) +
+                psInputsHtml(r.keys, s.blanks, r.values, marks) +
+                feedback +
+                '<div class="quiz-actions">' + actions + '</div>';
+        }
+
+        var roundKeys = psRoundKeys(r);
+        var key = psCurrentKey(r);
+        var blank = s.blanks[key] || {};
+        var asked = r.picked !== null;
+        var marksMc = asked ? (function () { var m = {}; m[key] = r.lastCorrect; return m; })() : null;
+
+        var panel;
+        if (!asked) {
+            var order = r.optOrder || (r.optOrder = shuffle(psOptions(blank)));
+            var isBuildIt = r.round === r.sizes.length - 1;
+            panel = '<div class="ps-question">' +
+                (isBuildIt ? '<div class="ps-blankcount">' + ICONS.cards + ' Building the whole snippet — blank ' +
+                    (r.qi + 1) + ' of ' + roundKeys.length + '</div>' : '') +
+                '<div class="ps-qline"><strong>Blank ' + (r.qi + 1) + ': </strong>' +
+                    safeHtml(blank.q || key) + '</div>' +
+                '<div class="ps-options">' + order.map(function (o) {
+                    return '<button type="button" class="ps-opt" data-opt="' + esc(o) + '">' + esc(o) + '</button>';
+                }).join('') + '</div>' +
+                '<div class="quiz-actions">' +
+                    '<button type="button" class="study-btn" id="ps-restart">' + ICONS.retry + ' Start over</button>' +
+                    '<button type="button" class="study-btn" id="ps-next-snippet">Next snippet ' + ICONS.arrowRight + '</button>' +
+                '</div></div>';
+        } else {
+            panel = '<div class="ps-feedback ' + (r.lastCorrect ? 'ok' : 'bad') + '">' +
+                (r.lastCorrect ? ICONS.check + ' Correct' : ICONS.cross + ' Not quite — ' + safeHtml(blank.a)) +
+                '</div><div class="quiz-actions"><button type="button" class="study-btn primary" id="ps-continue">' +
+                (r.qi + 1 >= roundKeys.length ? 'Next stage ' : 'Next blank ') + ICONS.arrowRight + '</button></div>';
+        }
+
+        return head +
+            '<div class="ps-blankcount">' + ICONS.cards + ' ' + psCountGaps(s, roundKeys) + ' gap' +
+                (psCountGaps(s, roundKeys) === 1 ? '' : 's') + ' to fill in' +
+                (r.round === r.sizes.length - 1 ? ' — the whole snippet' : '') + '</div>' +
+            psCodeHtml(s.code, { missing: roundKeys, marks: marksMc, expected: expected }) +
+            panel;
+    }
+
+    function psRenderStage() {
+        var holder = document.getElementById('ps-stage');
+        if (!holder || !ps.run) return;
+        var s = allPseudo()[ps.idx];
+        if (!s) return;
+        var r = ps.run;
+
+        holder.innerHTML = psStageHtml(s, r);
+
+        Array.prototype.forEach.call(holder.querySelectorAll('.ps-opt'), function (btn) {
+            btn.addEventListener('click', function () { psPickOption(s, r, btn.getAttribute('data-opt')); });
+        });
+        var on = function (id, fn) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('click', fn);
+        };
+        on('ps-continue', function () { psContinue(s, r); });
+        on('ps-check', function () { psCheckTyped(s, r); });
+        on('ps-show', function () { psShowAnswers(s, r); });
+        on('ps-again', function () {
+            r.values = {}; r.marks = null; r.checked = false; r.revealed = false; r.perfect = false;
+            psRenderStage();
+            var first = document.querySelector('#ps-root .ps-input');
+            if (first) first.focus();
+        });
+        on('ps-restart', function () { ps.run = null; psRender(); });
+        on('ps-next-snippet', function () {
+            ps.idx = (ps.idx + 1) % allPseudo().length;
+            ps.run = null;
+            psRender();
+        });
+
+        // Enter checks the typed answer
+        holder.onkeydown = function (e) {
+            if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('ps-input')) {
+                e.preventDefault();
+                psCheckTyped(s, r);
+            }
+        };
+    }
+
+    function psPickOption(s, r, picked) {
+        var key = psCurrentKey(r);
+        var blank = s.blanks[key] || {};
+        r.picked = picked;
+        r.lastCorrect = psMatch(blank, picked);
+        if (!r.lastCorrect) {
+            r.flawless = false;
+            if (r.wrongThisRound.indexOf(key) === -1) r.wrongThisRound.push(key);
+        }
+        psRenderStage();
+    }
+
+    function psContinue(s, r) {
+        var roundKeys = psRoundKeys(r);
+        r.picked = null;
+        r.optOrder = null;
+        if (r.qi + 1 < roundKeys.length) {
+            r.qi++;
+        } else if (r.round + 1 < r.sizes.length) {
+            r.round++;
+            r.qi = 0;
+            r.wrongThisRound = [];
+            r.flawless = true;
+        } else {
+            // every MC round done — now type the whole thing
+            r.phase = 'type';
+            r.qi = 0;
+            r.values = {};
+            r.marks = null;
+            r.checked = false;
+            r.revealed = false;
+            r.perfect = false;
+        }
+        psRenderStage();
+    }
+
+    function psCheckTyped(s, r) {
+        var marks = {};
+        var perfect = true;
+        Array.prototype.forEach.call(document.querySelectorAll('#ps-root .ps-input'), function (inp) {
+            var k = inp.getAttribute('data-blank');
+            r.values[k] = inp.value;
+            var good = psMatchTyped(s.blanks[k] || {}, inp.value);
+            marks[k] = good;
+            if (!good) perfect = false;
+        });
+        r.marks = marks;
+        r.checked = true;
+        r.revealed = false;
+        r.perfect = perfect;
+        psRenderStage();
+    }
+
+    function psShowAnswers(s, r) {
+        var expected = psAnswers(s);
+        r.keys.forEach(function (k) { r.values[k] = expected[k]; });
+        r.revealed = true;
+        r.checked = false;
+        r.marks = null;
+        psRenderStage();
+    }
+
+    // ---- section ----
+    function buildPseudoSection(main) {
+        var sec = document.createElement('section');
+        sec.id = 'study-pseudocode';
+
+        var h1 = document.createElement('h1');
+        h1.textContent = 'Pseudocode Builder';
+        sec.appendChild(h1);
+
+        var meta = document.createElement('div');
+        meta.className = 'chapter-meta';
+        var sub = document.createElement('p');
+        sub.className = 'chapter-subtitle';
+        sub.textContent = 'User defined data types. Fill in the blanks stage by stage — one blank, then two, ' +
+            'then three, then the whole snippet — and finish by typing it from memory.';
+        meta.appendChild(sub);
+        sec.appendChild(meta);
+
+        var root = document.createElement('div');
+        root.id = 'ps-root';
+        sec.appendChild(root);
+
+        main.appendChild(sec);
+    }
+
+    function psRender() {
+        var root = document.getElementById('ps-root');
+        if (!root) return;
+        var list = allPseudo();
+        if (!list.length) {
+            root.innerHTML = '<div class="quiz-setup"><p>No pseudocode snippets yet. Add them in the ' +
+                'Admin Panel (Study Content &rarr; Pseudocode) to get started.</p></div>';
+            return;
+        }
+        ps.idx = Math.max(0, Math.min(ps.idx, list.length - 1));
+        var s = list[ps.idx];
+
+        var chips = list.map(function (item, i) {
+            return '<button type="button" class="filter-chip' + (i === ps.idx ? ' active' : '') +
+                '" data-snippet="' + i + '">' + esc(item.title || ('Snippet ' + (i + 1))) +
+                ' (' + psBlankKeys(item).length + ')</button>';
+        }).join('');
+
+        root.innerHTML =
+            '<div class="filter-chips ps-snippets" id="ps-snippets">' + chips + '</div>' +
+            (s.intro ? '<p class="quiz-setup-hint">' + safeHtml(s.intro) + '</p>' : '') +
+            '<div class="flashcard ps-card">' +
+                '<div class="flashcard-inner"><div class="ps-face" id="ps-stage"></div></div>' +
+            '</div>';
+
+        document.getElementById('ps-snippets').onclick = function (e) {
+            var chip = e.target.closest ? e.target.closest('.filter-chip') : null;
+            if (!chip) return;
+            ps.idx = parseInt(chip.getAttribute('data-snippet'), 10);
+            ps.run = null;
+            psRender();
+        };
+
+        if (!ps.run || ps.run.snippetId !== s.id) psStartSnippet();
+        psRenderStage();
+    }
+
+    // =================================================================
     // QUIZ  (engine ported from CSP1's Games: shuffled questions,
     // instant feedback + explanation, score badges, timer, progress
     // bar, results screen, retry — plus the 60s Speed Round)
@@ -708,11 +1148,13 @@ window.Study = (function () {
 
         buildFlashcardsSection(main);
         buildQuizSection(main);
+        buildPseudoSection(main);
 
         fcBuildDeck();
         fcRenderFilters();
         fcRender();
         qzRenderSetup();
+        psRender();
     }
 
     return { init: init, icons: ICONS };
