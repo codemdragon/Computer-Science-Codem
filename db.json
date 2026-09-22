@@ -253,7 +253,7 @@
                 "Convert the integer part to binary",
                 "Multiply the fractional part by 2",
                 "Record the integer part as the next binary bit",
-                "Repeat until the fractional part becomes 0 or a repeating cycle is detected"
+                "Repeat until a result comes out as exactly 1.0 — the fractional part is then 0 — or a repeating cycle is detected"
               ]
             },
             {
@@ -1172,7 +1172,7 @@
       "definition": "Convert the integer part normally, then multiply the fraction by 2 each time.",
       "points": [
         "Each result's integer part is the next bit",
-        "Stop when the fraction reaches 0"
+        "Stop when a result is exactly 1.0 (the fractional part is then 0)"
       ],
       "chapter": "real-numbers",
       "questions": [
@@ -1182,21 +1182,21 @@
         },
         {
           "q": "When do you stop multiplying the fraction by 2?",
-          "a": "When it reaches 0 or repeats"
+          "a": "When you get exactly 1.0, or the bits repeat"
         }
       ]
     },
     {
       "id": "fc-repeating-decimals",
       "term": "Repeating Decimals in Binary",
-      "definition": "Some fractions never reach 0, so the bits repeat in a cycle.",
+      "definition": "Some fractions never produce exactly 1.0, so the bits repeat in a cycle.",
       "points": [
         "Stop after one full cycle"
       ],
       "chapter": "real-numbers",
       "questions": [
         {
-          "q": "What happens when a binary fraction never reaches 0?",
+          "q": "What happens when a fraction never gives exactly 1.0?",
           "a": "The bits repeat in a cycle"
         }
       ]
@@ -1781,7 +1781,7 @@
         "Subtract 2 and record the difference"
       ],
       "ans": 0,
-      "exp": "Multiply the fractional part by 2, record the integer part as the next bit, and repeat until the fraction is 0 or a cycle repeats.",
+      "exp": "Multiply the fractional part by 2, record the integer part as the next bit, and repeat until a result comes out as exactly 1.0 (the fractional part is then 0) or a cycle repeats.",
       "chapter": "real-numbers"
     },
     {
@@ -1805,7 +1805,7 @@
         "1110.1011"
       ],
       "ans": 2,
-      "exp": "0.7 never reaches 0 — the bits repeat (…101100101100…), so the answer is shown as a recurring binary pattern.",
+      "exp": "0.7 never gives exactly 1.0 — the bits repeat (…101100101100…), so the answer is shown as a recurring binary pattern.",
       "chapter": "real-numbers"
     },
     {

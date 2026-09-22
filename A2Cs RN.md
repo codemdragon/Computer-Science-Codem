@@ -17,7 +17,7 @@ To convert a real number to binary:
 1. Convert the integer part to binary
 2. Multiply the fractional part by 2
 3. Record the integer part as the next binary bit
-4. Repeat until the fractional part becomes 0 or a repeating cycle is detected
+4. Repeat until a result comes out as exactly 1.0 - the fractional part is then 0 - or a repeating cycle is detected
 
 ### Example: 7.25
 
