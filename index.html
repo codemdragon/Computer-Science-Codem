@@ -556,6 +556,402 @@
             font-weight: bold;
             color: var(--accent-blue-bright);
         }
+
+        /* --- STUDY: FLASHCARDS & QUIZ --- */
+        .study-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.25rem;
+        }
+
+        .filter-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-chip {
+            padding: 6px 14px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            font-family: var(--font-family);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .filter-chip:hover:not(:disabled) { border-color: var(--accent-blue); color: white; }
+        .filter-chip.active { background: rgba(0, 102, 204, 0.25); border-color: var(--accent-blue-bright); color: white; }
+        .filter-chip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .mode-toggle {
+            display: inline-flex;
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .mode-toggle button {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: var(--font-family);
+            padding: 6px 16px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-toggle button.active { background: var(--accent-blue); color: white; }
+
+        .progress-info {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-blue-bright);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .flashcard {
+            perspective: 1200px;
+            height: 280px;
+            margin: 1rem auto 1.5rem;
+            cursor: pointer;
+            max-width: 640px;
+        }
+
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+
+        .flashcard-front,
+        .flashcard-back {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.75rem 1.5rem;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent-blue-bright);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .flashcard-front { text-align: center; }
+
+        .flashcard-back {
+            transform: rotateY(180deg);
+            align-items: flex-start;
+            justify-content: flex-start;
+            text-align: left;
+        }
+
+        .fc-term {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--accent-blue-bright);
+            line-height: 1.4;
+        }
+
+        .fc-hint {
+            margin-top: 0.9rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .fc-def { font-size: 1.02rem; color: var(--text-main); }
+
+        .fc-extra {
+            margin-top: 0.75rem;
+            padding: 0.55rem 0.8rem;
+            background: rgba(0, 102, 204, 0.08);
+            border-left: 2px solid var(--accent-blue);
+            border-radius: 4px;
+            font-size: 0.88rem;
+            color: var(--text-main);
+            width: 100%;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .fc-extra .fc-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-blue-bright);
+            font-weight: 700;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .fc-chapter {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .knowledge-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 0.25rem 0 1rem;
+            flex-wrap: wrap;
+        }
+
+        .study-btn {
+            font-family: var(--font-family);
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 9px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .study-btn:hover { border-color: var(--accent-blue-bright); color: white; }
+        .study-btn.primary { background-color: var(--accent-blue); border-color: var(--accent-blue); color: white; font-weight: 600; }
+        .study-btn.primary:hover { background-color: var(--accent-blue-bright); }
+        .study-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-know {
+            background: rgba(38, 222, 129, 0.12);
+            border: 1px solid #26de81;
+            color: #26de81;
+            font-weight: 600;
+            padding: 10px 22px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-family: var(--font-family);
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .btn-know:hover { background: #26de81; color: #050505; }
+
+        .btn-dont {
+            background: rgba(229, 80, 57, 0.12);
+            border: 1px solid #e55039;
+            color: #e55039;
+            font-weight: 600;
+            padding: 10px 22px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-family: var(--font-family);
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .btn-dont:hover { background: #e55039; color: white; }
+
+        .study-nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .session-stats {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.9rem;
+        }
+
+        .quiz-setup {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent-blue);
+            border-radius: 6px;
+            padding: 1.5rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .quiz-setup-hint { color: var(--text-muted); font-size: 0.88rem; margin: 0.75rem 0 1rem; }
+
+        .quiz-count-row { margin: 1rem 0; max-width: 260px; }
+
+        .quiz-count-row label {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .quiz-count-row select {
+            width: 100%;
+            background: #0a0a0a;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .quiz-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 1.1rem;
+            flex-wrap: wrap;
+        }
+
+        .score-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .score-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 12px;
+            border-radius: 12px;
+        }
+
+        .score-badge.green { background: rgba(38, 222, 129, 0.15); color: #26de81; }
+        .score-badge.red { background: rgba(229, 80, 57, 0.15); color: #e55039; }
+        .score-badge.blue { background: rgba(0, 128, 255, 0.15); color: var(--accent-blue-bright); }
+
+        .game-timer {
+            margin-left: auto;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .game-timer.danger { color: #e55039; font-weight: 700; }
+
+        .qz-quit {
+            font-family: var(--font-family);
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .qz-quit:hover { border-color: #e55039; color: #e55039; }
+
+        .quiz-question {
+            font-size: 1.12rem;
+            font-weight: 600;
+            color: white;
+            margin: 1rem 0 1.1rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 0 0 1rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .quiz-opt {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+            touch-action: manipulation;
+        }
+
+        .quiz-opt:hover:not(.disabled) {
+            border-color: var(--accent-blue-bright);
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+        }
+
+        .quiz-opt.correct { border-color: #26de81; background: rgba(38, 222, 129, 0.12); }
+        .quiz-opt.wrong { border-color: #e55039; background: rgba(229, 80, 57, 0.12); }
+        .quiz-opt.disabled { cursor: default; opacity: 0.9; }
+
+        .explanation {
+            background: rgba(0, 102, 204, 0.08);
+            border-left: 3px solid var(--accent-blue-bright);
+            padding: 0.8rem 1rem;
+            border-radius: 4px;
+            margin: 0.5rem auto 0;
+            font-size: 0.92rem;
+            max-width: 700px;
+        }
+
+        .qz-results { text-align: center; }
+        .qz-emoji { font-size: 2.6rem; margin-bottom: 6px; }
+        .qz-results h3 { font-size: 1.4rem; color: white; }
+        .qz-wrong { text-align: left; margin-top: 1.1rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
+        .qz-wrong-title { font-weight: 700; color: var(--accent-blue-bright); margin-bottom: 0.6rem; font-size: 0.9rem; }
+        .qz-wrong-item { font-size: 0.85rem; padding: 0.6rem 0.7rem; background: rgba(229, 80, 57, 0.06); border-radius: 4px; margin-bottom: 0.5rem; }
+        .qz-wrong-item em { color: var(--text-muted); }
+
+        @media (max-width: 640px) {
+            .quiz-options { grid-template-columns: 1fr; }
+            .flashcard { height: 320px; }
+            .study-toolbar { flex-direction: column; align-items: flex-start; }
+        }
     </style>
 </head>
 <body>
@@ -577,6 +973,11 @@
         <nav id="sidebar">
             <div class="nav-label">Chapters</div>
             <div id="nav-chapters"></div>
+            <div class="nav-label" style="margin-top: 2rem;">Study</div>
+            <div id="nav-study">
+                <div class="nav-item" data-target="study-flashcards" onclick="showSection('study-flashcards')">🃏 Flashcards</div>
+                <div class="nav-item" data-target="study-quiz" onclick="showSection('study-quiz')">📝 Quiz</div>
+            </div>
             <div class="nav-label" style="margin-top: 2rem;">Settings</div>
             <a class="nav-item" href="admin.html">Admin Panel</a>
         </nav>
@@ -590,6 +991,7 @@
     </div>
 
     <!-- JavaScript -->
+    <script src="study.js"></script>
     <script>
         const ESCAPE_ALLOWED = { strong: true, code: true, em: true };
 
@@ -808,7 +1210,7 @@
             document.querySelectorAll('section').forEach(function (s) {
                 s.classList.toggle('active', s.id === sectionId);
             });
-            document.querySelectorAll('#nav-chapters .nav-item').forEach(function (n) {
+            document.querySelectorAll('.nav-item[data-target]').forEach(function (n) {
                 n.classList.toggle('active', n.getAttribute('data-target') === sectionId);
             });
             closeMenu();
@@ -834,6 +1236,7 @@
                     throw new Error('No chapters found in db.json');
                 }
                 buildApp(data);
+                if (window.Study) window.Study.init(data);
             })
             .catch(function (err) {
                 document.getElementById('loading-box').outerHTML =
