@@ -932,6 +932,10 @@
             {
               "type": "note",
               "text": "Example: A, \"A\""
+            },
+            {
+              "type": "p",
+              "text": "ALL Elements MUST be of **SAME** datatype"
             }
           ]
         }
