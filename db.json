@@ -386,6 +386,10 @@
               ]
             },
             {
+              "type": "p",
+              "text": "<strong>Remember:</strong> Two's complement works <strong>both ways</strong>, so if you flip all bits and add 1 to convert to -ve, You can simply flip all bits and add one again to <strong>go back to +ve</strong>"
+            },
+            {
               "type": "h3",
               "text": "Method 2: Place-Value Table (method used in the examples below)"
             },
