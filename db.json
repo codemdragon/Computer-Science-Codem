@@ -805,7 +805,7 @@
             },
             {
               "type": "note",
-              "text": "REMEMBER: string values are NOT enclosed in quotes or commas here."
+              "text": "REMEMBER: values are NOT enclosed in quotes or commas here."
             }
           ]
         },
