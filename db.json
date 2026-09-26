@@ -1653,6 +1653,19 @@
           "a": "Union and intersection"
         }
       ]
+    },
+    {
+      "id": "fc-1790423930160",
+      "term": "User Defined Datatype Importance",
+      "definition": "Software does not provide datatype, Reduces Code Complexity/Simplifies code basically",
+      "points": [],
+      "chapter": "data-types",
+      "questions": [
+        {
+          "q": "Explain why user-defined datatypes are neccessary",
+          "a": "Software does not provide datatype, \nReduces Code Complexity"
+        }
+      ]
     }
   ],
   "quiz": [
