@@ -922,6 +922,10 @@
               "text": "Unordered list of elements to which we apply different <strong>mathematical operations</strong>."
             },
             {
+              "type": "p",
+              "text": "ALL Elements MUST be of <strong>SAME</strong> datatype"
+            },
+            {
               "type": "code",
               "text": "TYPE MySet = SET OF INTEGER\n\nDEFINE MyNumbers (1, 2, 3, 4) : MySet"
             },
@@ -932,10 +936,6 @@
             {
               "type": "note",
               "text": "Example: A, \"A\""
-            },
-            {
-              "type": "p",
-              "text": "ALL Elements MUST be of **SAME** datatype"
             }
           ]
         }
