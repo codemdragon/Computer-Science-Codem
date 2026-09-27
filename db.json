@@ -758,6 +758,10 @@
               ]
             }
           ]
+        },
+        {
+          "type": "note",
+          "text": "Remeber: if you dont wanna calculate the full denary, you can always write as Value  = Mantisa x 2^Exponent"
         }
       ]
     },
